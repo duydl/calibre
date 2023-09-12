@@ -150,11 +150,11 @@ class ReadAloud:
             notes_container.style.display = notes_container.previousSibling.style.display = 'block'
             notes_container = notes_container.lastChild
             if self.state is STOPPED:
-                notes_container.textContent = _('Tap/click on a word to start from there')
+                notes_container.textContent = _('Tap/click on a word to start from there - test STOPPED')
             elif self.state is PLAYING:
                 notes_container.textContent = _('Tap/click on a word to skip to it')
             else:
-                notes_container.textContent = _('Tap/click on a word to continue from there')
+                notes_container.textContent = _('Tap/click on a word to continue from there - test PAUSED')
 
     def configure(self):
         self.pause()

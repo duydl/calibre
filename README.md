@@ -46,3 +46,45 @@ calibre binaries and installers for all the platforms calibre supports.
 ## calibre package versions in various repositories
 
 [![Packaging Status](https://repology.org/badge/vertical-allrepos/calibre.svg)](https://repology.org/project/calibre/versions)
+
+# 1
+Do on cmd, will not work on powershell
+set CALIBRE_DEVELOP_FROM=C:\Projects\calibre\src   (must add src-different from doc)
+echo %CALIBRE_DEVELOP_FROM% 
+
+# 2 
+https://manual.calibre-ebook.com/develop.html#debugging-tips
+
+This is Kovid’s favorite way to debug. Simply insert print statements at points of interest and run your program in the terminal. For example, you can start the GUI from the terminal as:
+
+calibre-debug -g
+Similarly, you can start the E-book viewer as:
+
+calibre-debug -w /path/to/file/to/be/viewed
+The e-book-editor can be started as:
+
+calibre-debug -t /path/to/be/edited
+
+# 3
+
+python calibre\gui2\tts\develop.py
+> ModuleNotFoundError: No module named 'qt'
+
+import sys
+print(sys.path)
+> No path in the path list
+
+sys.path.append('C:\\Projects\\calibre\\src')
+> ImportError: cannot import name 'QDialogButtonBox' from 'qt.core' (C:\Projects\calibre\src\qt\core.py)
+
+pip install PyQt6
+
+>File "C:\Projects\calibre\src\calibre\constants.py", line 173, in <module>
+    plugins_loc = sys.extensions_location
+AttributeError: module 'sys' has no attribute 'extensions_location'
+
+You cant really use calibre code in external python interpreters, except on linux, if you install calibre system-wide. On windows, if you want to use calibre use calibre-debug as the python interpreter.
+
+calibre-debug file.py
+
+https://manual.calibre-ebook.com/dev...on-environment

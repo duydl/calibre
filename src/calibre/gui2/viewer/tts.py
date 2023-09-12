@@ -7,7 +7,7 @@ from calibre.gui2 import error_dialog
 from calibre.gui2.viewer.config import get_pref_group, vprefs
 from calibre.gui2.widgets2 import Dialog
 from calibre.utils.localization import _
-
+import pykakasi
 
 def set_sync_override(allowed):
     from calibre.gui2.viewer.lookup import set_sync_override

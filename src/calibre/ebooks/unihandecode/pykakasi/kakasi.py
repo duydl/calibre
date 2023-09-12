@@ -1,96 +1,146 @@
+# -*- coding: utf-8 -*-
 #  kakasi.py
 #
-# Copyright 2011 Hiroshi Miura <miurahr@linux.com>
+# Copyright 2011-2021 Hiroshi Miura <miurahr@linux.com>
 #
-#  Original Copyright:
-# * KAKASI (Kanji Kana Simple inversion program)
-# * $Id: jj2.c,v 1.7 2001-04-12 05:57:34 rug Exp $
-# * Copyright (C) 1992
-# * Hironobu Takahashi (takahasi@tiny.or.jp)
-# *
-# * This program is free software; you can redistribute it and/or modify
-# * it under the terms of the GNU General Public License as published by
-# * the Free Software Foundation; either versions 2, or (at your option)
-# * any later version.
-# *
-# * This program is distributed in the hope that it will be useful
-# * but WITHOUT ANY WARRANTY; without even the implied warranty of
-# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# * GNU General Public License for more details.
-# *
-# */
+import enum
+from typing import Dict, List, Tuple
+
+from calibre.ebooks.unihandecode.jaconv import jaconv
+
+from .kanji import JConv
+from .properties import Ch
+from .scripts import A2, H2, IConv, K2, Sym2
 
 
-from calibre.ebooks.unihandecode.pykakasi.j2h import J2H
-from calibre.ebooks.unihandecode.pykakasi.h2a import H2a
-from calibre.ebooks.unihandecode.pykakasi.k2a import K2a
+class PyKakasiException(Exception):
+    pass
 
 
-class kakasi:
+class UnknownCharacterException(PyKakasiException):
+    pass
 
-    j2h = None
-    h2a = None
-    k2a = None
+
+class _TYPE(enum.Enum):
+    KANJI = 1
+    KANA = 2
+    HIRAGANA = 3
+    SYMBOL = 4
+    ALPHA = 5
+
+
+class Kakasi:
+    """Kakasi is a conversion class for Japanese text."""
 
     def __init__(self):
-        self.j2h = J2H()
-        self.h2a = H2a()
-        self.k2a = K2a()
+        self._jconv = JConv()
+        self._iconv = IConv()
 
-    def do(self, text):
-        otext =  ''
+    @classmethod
+    def normalize(cls, text):
+        return jaconv.normalize(text)
+
+    def convert(self, text: str) -> List[Dict[str, str]]:
+        """Convert input text to dictionary contains KANA, HIRA and romaji results."""
+
+        if len(text) == 0:
+            return [
+                {
+                    "orig": "",
+                    "kana": "",
+                    "hira": "",
+                    "hepburn": "",
+                    "passport": "",
+                    "kunrei": "",
+                }
+            ]
+
+        original_text = ""
+        kana_text = ""
+        _result = []
         i = 0
-        while True:
-            if i >= len(text):
-                break
+        prev_type = _TYPE.KANJI
+        output_flag: Tuple[bool, bool, bool] = (False, False, False)
 
-            if self.j2h.isKanji(text[i]):
-                (t, l) = self.j2h.convert(text[i:])
-                if l <= 0:
-                    otext  = otext + text[i]
-                    i = i + 1
-                    continue
-                i = i + l
-                m = 0
-                tmptext = ""
-                while True:
-                    if m >= len(t):
-                        break
-                    (s, n) = self.h2a.convert(t[m:])
-                    if n <= 0:
-                        break
-                    m = m + n
-                    tmptext = tmptext+s
-                if i >= len(text):
-                    otext = otext + tmptext.capitalize()
+        while i < len(text):
+            # output_flag
+            # means (output buffer?, output text[i]?, copy and increment i?)
+            # possible (False, True, True), (True, False, False), (True, True, True)
+            #          (False, False, True)
+            if text[i] in Ch.endmark:
+                prev_type = _TYPE.SYMBOL
+                output_flag = (True, True, True)
+            elif text[i] in Ch.long_symbols:
+                # FIXME: special case
+                output_flag = (False, False, True)
+            elif Sym2.isRegion(text[i]):
+                if prev_type != _TYPE.SYMBOL:
+                    output_flag = (True, False, True)
                 else:
-                    otext = otext + tmptext.capitalize() +' '
-            elif self.h2a.isHiragana(text[i]):
-                tmptext = ''
-                while True:
-                    (t, l) = self.h2a.convert(text[i:])
-                    tmptext = tmptext+t
-                    i = i + l
-                    if i >= len(text):
-                        otext = otext + tmptext
-                        break
-                    elif not self.h2a.isHiragana(text[i]):
-                        otext = otext + tmptext + ' '
-                        break
-            elif self.k2a.isKatakana(text[i]):
-                tmptext = ''
-                while True:
-                    (t, l) = self.k2a.convert(text[i:])
-                    tmptext = tmptext+t
-                    i = i + l
-                    if i >= len(text):
-                        otext = otext + tmptext
-                        break
-                    elif not self.k2a.isKatakana(text[i]):
-                        otext = otext + tmptext + ' '
-                        break
-            else:
-                otext  = otext + text[i]
+                    output_flag = (False, True, True)
+                prev_type = _TYPE.SYMBOL
+            elif K2.isRegion(text[i]):
+                output_flag = (prev_type != _TYPE.KANA, False, True)
+                prev_type = _TYPE.KANA
+            elif H2.isRegion(text[i]):
+                output_flag = (prev_type != _TYPE.HIRAGANA, False, True)
+                prev_type = _TYPE.HIRAGANA
+            elif A2.isRegion(text[i]):
+                output_flag = (prev_type != _TYPE.ALPHA, False, True)
+                prev_type = _TYPE.ALPHA
+            elif self._jconv.isRegion(text[i]):
+                if len(original_text) > 0:
+                    _result.append(self._iconv.convert(original_text, kana_text))
+                t, ln = self._jconv.convert(text[i:], original_text)
+                prev_type = _TYPE.KANJI
+                if ln > 0:
+                    original_text = text[i : i + ln]
+                    kana_text = t
+                    i += ln
+                    output_flag = (False, False, False)
+                else:  # unknown kanji
+                    original_text = text[i]
+                    kana_text = ""
+                    i += 1
+                    output_flag = (True, False, False)
+            elif (
+                0xF000 <= ord(text[i]) <= 0xFFFD or 0x10000 <= ord(text[i]) <= 0x10FFFD
+            ):
+                # PUA: ignore and drop
+                if len(original_text) > 0:
+                    _result.append(self._iconv.convert(original_text, kana_text))
                 i += 1
+                output_flag = (False, False, False)
+            else:
+                if len(original_text) > 0:
+                    _result.append(self._iconv.convert(original_text, kana_text))
+                _result.append(self._iconv.convert(text[i], ""))
+                i += 1
+                output_flag = (False, False, False)
 
-        return otext
+            # Convert to kana and Output based on flag
+            if output_flag[0] and output_flag[1]:
+                original_text += text[i]
+                kana_text += text[i]
+                _result.append(self._iconv.convert(original_text, kana_text))
+                original_text = ""
+                kana_text = ""
+                i += 1
+            elif output_flag[0] and output_flag[2]:
+                if len(original_text) > 0:
+                    _result.append(self._iconv.convert(original_text, kana_text))
+                original_text = text[i]
+                kana_text = text[i]
+                i += 1
+            elif output_flag[2]:
+                original_text += text[i]
+                kana_text += text[i]
+                i += 1
+            else:
+                pass
+
+        # last word
+        if len(original_text) > 0:
+            _result.append(self._iconv.convert(original_text, kana_text))
+
+        return _result

@@ -20,7 +20,8 @@ import re
 from calibre.ebooks.unihandecode.unidecoder import Unidecoder
 from calibre.ebooks.unihandecode.unicodepoints import CODEPOINTS
 from calibre.ebooks.unihandecode.jacodepoints import CODEPOINTS as JACODES
-from calibre.ebooks.unihandecode.pykakasi.kakasi import kakasi
+from calibre.ebooks.unihandecode.pykakasi.kakasi import Kakasi
+
 
 
 class Jadecoder(Unidecoder):
@@ -30,11 +31,13 @@ class Jadecoder(Unidecoder):
     def __init__(self):
         self.codepoints = CODEPOINTS
         self.codepoints.update(JACODES)
-        self.kakasi = kakasi()
+        self.kakasi = Kakasi()
 
     def decode(self, text):
-        try:
-            result=self.kakasi.do(text)
-            return re.sub('[^\x00-\x7f]', lambda x: self.replace_point(x.group()),result)
-        except:
-            return re.sub('[^\x00-\x7f]', lambda x: self.replace_point(x.group()),text)
+        # try:
+        # print("test", Kakasi().convert(text))
+        result=self.kakasi.convert(text)
+        # print("test12", text)
+        return ''.join([d['hepburn'] for d in data])
+        # except:
+        #     return re.sub('[^\x00-\x7f]', lambda x: self.replace_point(x.group()),text)
