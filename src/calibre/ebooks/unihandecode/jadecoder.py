@@ -34,10 +34,9 @@ class Jadecoder(Unidecoder):
         self.kakasi = Kakasi()
 
     def decode(self, text):
-        # try:
-        # print("test", Kakasi().convert(text))
-        result=self.kakasi.convert(text)
-        # print("test12", text)
-        return ''.join([d['hepburn'] for d in data])
-        # except:
-        #     return re.sub('[^\x00-\x7f]', lambda x: self.replace_point(x.group()),text)
+
+            result = self.kakasi.convert(text)
+            return ''.join([d['hepburn'].capitalize() if 
+            bool(re.search(r'[^\x00-\x7F]', d['orig'])) else d['orig'] for d in result])
+
+

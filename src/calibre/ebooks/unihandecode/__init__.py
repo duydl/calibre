@@ -46,5 +46,4 @@ class Unihandecoder:
                 text = text.decode('utf-8', 'replace')
         # at first unicode normalize it. (see Unicode standards)
         ntext = unicodedata.normalize('NFKC', text)
-        print("here")
         return self.decoder.decode(ntext)

@@ -42,23 +42,3 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __docformat__ = "restructuredtext en"
 
 from .kakasi import Kakasi, PyKakasiException, UnknownCharacterException
-# from .legacy import (
-#     InvalidFlagValueException,
-#     InvalidModeValueException,
-#     UnknownOptionsException,
-#     UnsupportedRomanRulesException,
-#     kakasi,
-#     wakati,
-# )
-
-__all__ = [
-    "Kakasi",
-    "kakasi",
-    "wakati",
-    "PyKakasiException",
-    "UnknownCharacterException",
-    "UnsupportedRomanRulesException",
-    "UnknownOptionsException",
-    "InvalidModeValueException",
-    "InvalidFlagValueException",
-]

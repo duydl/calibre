@@ -88,3 +88,8 @@ You cant really use calibre code in external python interpreters, except on linu
 calibre-debug file.py
 
 https://manual.calibre-ebook.com/dev...on-environment
+
+
+# 4 Change Jap encoder 
+
+New 'from calibre.ebooks.unihandecode.pykakasi.kakasi import Kakasi'

@@ -91,7 +91,7 @@ class Kakasi:
             elif self._jconv.isRegion(text[i]):
                 if len(original_text) > 0:
                     _result.append(self._iconv.convert(original_text, kana_text))
-                t, ln = self._jconv.convert(text[i:], original_text)
+                t, ln = self._jconv.convert(text[i:])
                 prev_type = _TYPE.KANJI
                 if ln > 0:
                     original_text = text[i : i + ln]
@@ -103,14 +103,6 @@ class Kakasi:
                     kana_text = ""
                     i += 1
                     output_flag = (True, False, False)
-            elif (
-                0xF000 <= ord(text[i]) <= 0xFFFD or 0x10000 <= ord(text[i]) <= 0x10FFFD
-            ):
-                # PUA: ignore and drop
-                if len(original_text) > 0:
-                    _result.append(self._iconv.convert(original_text, kana_text))
-                i += 1
-                output_flag = (False, False, False)
             else:
                 if len(original_text) > 0:
                     _result.append(self._iconv.convert(original_text, kana_text))
