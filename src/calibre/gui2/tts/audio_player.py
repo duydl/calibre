@@ -57,7 +57,7 @@ class Client:
 
     def __init__(self, settings=None, dispatch_on_main_thread=lambda f: f()):
         self.backend = WinSpeech(self.dispatch_msg)
-        print(self.dispatch_msg)
+        # print(self.dispatch_msg)
         self.last_mark = -1
         self.current_callback = None
         self.dispatch_on_main_thread = dispatch_on_main_thread
