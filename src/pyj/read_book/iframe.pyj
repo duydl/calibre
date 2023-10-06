@@ -967,6 +967,7 @@ class IframeBoss:
 
     def tts_msg_received(self, data):
         if data.type is 'mark':
+            print(data.num)
             self.mark_word_being_spoken(data.num)
         elif data.type is 'play':
             text_node, offset = None, 0
@@ -976,7 +977,9 @@ class IframeBoss:
                 r = first_visible_word()
             if r and r.startContainer?.nodeType is Node.TEXT_NODE:
                 text_node, offset = r.startContainer, r.startOffset
-            marked_text = tts_data(text_node, offset)
+            # marked_text = tts_data(text_node, offset)
+            marked_text = [24446, "enough", " ", 24453, "to", " ", 24456, "say", " ", 24460, "the", " ", 24464, "truth", " ", 24470, "to", " ", 24473, "them:", "\n   ", 24482, "’The", " ", 24487, "humble", " ", 24494, "little", " ", 24501, "friend", " ", 24508, "is", " ", 24511, "gone", " ", 24516, "where", " ", 24522, "go", " ", 24525, "the", " ", 24529, "beasts", " ", 24536, "that", " ", 24541, "perish.’”", "\n   \n   \n    ", 24563, "[Previous]", "\n    ", 24578, "[Contents]", "\n    ", 24593, "[Top]", "\n    ", 24603, "[Next]", "\n   \n   \n  \n "]
+            # print("marked_test", text_node, "dsfdfsdf", offset, marked_text)
             sel = window.getSelection()
             sel.removeAllRanges()
             self.send_message('tts', type='text-extracted', marked_text=marked_text, pos=data.pos)

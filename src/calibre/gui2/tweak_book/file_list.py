@@ -999,6 +999,8 @@ class FileList(QTreeWidget, OpenWithHandler):
 
     @property
     def all_files(self):
+        print("qqqqqqqqqqqqq")
+        print((category.child(i) for category in self.categories.values() for i in range(category.childCount())))
         return (category.child(i) for category in self.categories.values() for i in range(category.childCount()))
 
     @property

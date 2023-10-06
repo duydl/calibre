@@ -38,16 +38,25 @@ from calibre.utils.webengine import (
 from polyglot.builtins import as_bytes, iteritems
 from polyglot.functools import lru_cache
 
+import json
+
 SANDBOX_HOST = FAKE_HOST.rpartition('.')[0] + '.sandbox'
 
 # Override network access to load data from the book {{{
 
-
 def set_book_path(path, pathtoebook):
+    global is_Audio_Ebook
     set_book_path.pathtoebook = pathtoebook
     set_book_path.path = os.path.abspath(path)
     set_book_path.metadata = get_data('calibre-book-metadata.json')[0]
     set_book_path.manifest, set_book_path.manifest_mime = get_data('calibre-book-manifest.json')
+    
+    print("manifest", type(set_book_path.manifest), set_book_path.manifest_mime)
+    for file_name, file_info in json.loads(set_book_path.manifest).get("files", {}).items():
+        if file_info.get("mimetype") == "application/smil+xml":
+            is_Audio_Ebook = True
+            break
+        
     set_book_path.parsed_metadata = json_loads(set_book_path.metadata)
     set_book_path.parsed_manifest = json_loads(set_book_path.manifest)
 
@@ -612,6 +621,7 @@ class WebView(RestartingWebEngineView):
         self.bridge.create_view(
             vprefs['session_data'], vprefs['local_storage'], field_metadata.all_metadata(), ui_data)
         performance_monitor('bridge ready')
+        # print(vprefs['session_data'], vprefs['local_storage'])
         for func, args in iteritems(self.pending_bridge_ready_actions):
             getattr(self.bridge, func)(*args)
 
@@ -628,6 +638,7 @@ class WebView(RestartingWebEngineView):
 
     def start_book_load(self, initial_position=None, highlights=None, current_book_data=None, reading_rates=None):
         key = (set_book_path.path,)
+        print("set_book_path.path", set_book_path.path, set_book_path.pathtoebook)
         book_url = link_prefix_for_location_links(add_open_at=False)
         self.execute_when_ready('start_book_load', key, initial_position, set_book_path.pathtoebook, highlights or [], book_url, reading_rates)
 
@@ -719,6 +730,7 @@ class WebView(RestartingWebEngineView):
         self.execute_when_ready('prepare_for_close')
 
     def highlight_action(self, uuid, which):
+        # print("Hightlight Action")
         self.execute_when_ready('highlight_action', uuid, which)
         self.setFocus(Qt.FocusReason.OtherFocusReason)
 
@@ -726,6 +738,8 @@ class WebView(RestartingWebEngineView):
         self.execute_when_ready('generic_action', which, data)
 
     def tts_event_received(self, which, data):
+        print("tts_event_received")
+        print(which, data)
         self.execute_when_ready('tts_event', which, data)
 
     def tts_settings_changed(self, ui_settings):

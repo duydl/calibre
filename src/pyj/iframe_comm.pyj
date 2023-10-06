@@ -218,6 +218,7 @@ class IframeClient:
             return
         msg = event.data
         data = msg.data
+        # print(data, "handle_message") 
         if msg.encrypted:
             if not self.gcm_from_parent:
                 print(f'the iframe {self.name}-{self.instance_num} got an encrypted message from its parent without being initialized')
@@ -228,6 +229,7 @@ class IframeClient:
                 data = JSON.parse(self.gcm_from_parent.decrypt(data))
             except Exception as e:
                 print('Could not process message from parent:')
+                # print(data, "handle_message")
                 console.log(e)
                 return
         if not data or not data.action:

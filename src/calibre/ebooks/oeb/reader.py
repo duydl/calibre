@@ -707,6 +707,7 @@ class OEBReader:
 
 def main(argv=sys.argv):
     reader = OEBReader()
+    print("pass through here??")
     for arg in argv[1:]:
         oeb = reader(OEBBook(), arg)
         for name, doc in oeb.to_opf1().values():

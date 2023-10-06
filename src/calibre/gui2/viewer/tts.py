@@ -7,7 +7,8 @@ from calibre.gui2 import error_dialog
 from calibre.gui2.viewer.config import get_pref_group, vprefs
 from calibre.gui2.widgets2 import Dialog
 from calibre.utils.localization import _
-import pykakasi
+# import pykakasi
+from calibre.ebooks.unihandecode import pykakasi
 
 def set_sync_override(allowed):
     from calibre.gui2.viewer.lookup import set_sync_override
@@ -70,6 +71,7 @@ class TTS(QObject):
 
     @property
     def tts_client(self):
+        print("tts play")
         if self._tts_client is None:
             settings = self.backend_settings
             self._tts_client = self.tts_client_class(settings, self.dispatch_on_main_thread_signal.emit)
@@ -91,6 +93,7 @@ class TTS(QObject):
 
     def action(self, action, data):
         from calibre.gui2.tts.errors import TTSSystemUnavailable
+        print("tts.py check", action, data)
         try:
             getattr(self, action)(data)
         except TTSSystemUnavailable as err:
@@ -98,6 +101,7 @@ class TTS(QObject):
 
     def play(self, data):
         set_sync_override(False)
+        print("dfadsfasdf", data)
         self.tts_client.speak_marked_text(data['marked_text'], self.callback)
 
     def pause(self, data):

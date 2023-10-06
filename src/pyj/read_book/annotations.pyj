@@ -11,12 +11,14 @@ no_cfi = '/99999999'
 
 
 def bookmark_get_cfi(b):
+    print("check")
     if b.pos_type is 'epubcfi':
         return b.pos[8:-1]
     return no_cfi
 
 
 def highlight_get_cfi(hl):
+    print("checksdfsfsdfsdfewfdsfsef")
     cfi = hl.start_cfi
     if cfi:
         si = f'/{hl.spine_index}' if hl.spine_index? else no_cfi

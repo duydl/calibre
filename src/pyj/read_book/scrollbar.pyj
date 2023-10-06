@@ -16,7 +16,7 @@ class BookScrollbar:
 
     def __init__(self, view):
         self.view = view
-        self.container_id = unique_id('book-scrollbar')
+        self.container_id = unique_id('book-scrollbartevtert5')
         self.sync_to_contents_timer = 0
         self.sync_contents_timer = 0
 
@@ -67,15 +67,16 @@ class BookScrollbar:
         bob = c.firstChild
         mouse_grab = bob.nextSibling
         if which is 'move':
-            top = evt.pageY - self.down_y
-            height = c.clientHeight - bob.clientHeight
-            top = max(0, min(top, height))
-            bob.style.top = f'{top}px'
-            evt.preventDefault(), evt.stopPropagation()
-            frac = bob.offsetTop / height
-            if self.sync_contents_timer:
-                window.clearTimeout(self.sync_contents_timer)
-            self.sync_contents_timer = window.setTimeout(self.view.goto_frac.bind(None, frac), 2)
+            pass
+            # top = evt.pageY - self.down_y
+            # height = c.clientHeight - bob.clientHeight
+            # top = max(0, min(top, height))
+            # bob.style.top = f'{top}px'
+            # evt.preventDefault(), evt.stopPropagation()
+            # frac = bob.offsetTop / height
+            # if self.sync_contents_timer:
+            #     window.clearTimeout(self.sync_contents_timer)
+            # self.sync_contents_timer = window.setTimeout(self.view.goto_frac.bind(None, frac), 2)
         elif which is 'down':
             if evt.button is not 0:
                 return
@@ -105,9 +106,10 @@ class BookScrollbar:
         c.firstChild.style.top = f'{frac * (c.clientHeight - c.firstChild.clientHeight)}px'
 
     def sync_to_contents(self, frac):
-        if self.sync_to_contents_timer:
-            window.clearTimeout(self.sync_to_contents_timer)
-        self.sync_to_contents_timer = window.setTimeout(self.set_position.bind(None, frac), 100)
+        # if self.sync_to_contents_timer:
+        #     window.clearTimeout(self.sync_to_contents_timer)
+        # self.sync_to_contents_timer = window.setTimeout(self.set_position.bind(None, frac), 100)
+        pass
 
     def apply_color_scheme(self, colors):
         fg = cached_color_to_rgba(colors.foreground)

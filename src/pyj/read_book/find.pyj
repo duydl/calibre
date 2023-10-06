@@ -10,18 +10,31 @@ def build_text_map():
         'style': True, 'script': True, 'noscript': True, 'title': True, 'meta': True, 'head': True, 'link': True, 'html': True,
         'img': True
     }
+    # processed_tags = {'span': True}
     text_node_type = Node.TEXT_NODE
     element_node_type = Node.ELEMENT_NODE
 
     def process_node(node):
         nonlocal flat_text
         nt = node.nodeType
+        # 
         if nt is text_node_type:
+            
             text = node.nodeValue
             if text and text.length:
-                node_list.push(v"{node: node, offset: flat_text.length, length: text.length}")
+                node_list.push(v"{node: node, offset: flat_text.length, length: text.length, id: node.id}")
                 flat_text += text
+
+        #     return
+        # # It will never reach the text node. Just double the "/n" because those "/n" text node got added. the text inside span not reachable. 
+        # elif nt is element_node_type and node.tagName.toLowerCase() == "span":
+        #     # text = node.nodeValue
+        #     text = node.textContent
+        #     if text and text.length:
+        #         node_list.push(v"{node: node, offset: flat_text.length, length: text.length, id: node.id}")
+        #         flat_text += text + "\n \n "
         elif nt is element_node_type:
+            # print(node.tagName)
             if not node.hasChildNodes():
                 return
             tag = node.tagName.toLowerCase()
@@ -46,6 +59,7 @@ def index_for_node(node, node_list):
 
 def tts_word_regex():
     # Cf is Other, formatting, including soft hyphens zero-width joiners, etc
+    # return /[\p{Letter}\p{Mark}\p{Number}\p{Punctuation}\p{Cf}]{1,50}(?=\n \n )/gu
     return /[\p{Letter}\p{Mark}\p{Number}\p{Punctuation}\p{Cf}]{1,50}/gu
 
 
@@ -60,7 +74,10 @@ def tts_data(text_node, offset):
     last = None
     marked_text = v'[]'
     text = cache.text_map.flat_text[offset_in_flat_text:]
+    # print(text)
+    # print("cache.text_map.flat_text", cache.text_map)
     for v'match of text.matchAll(tts_word_regex())':
+    # for i, match in enumerate(text.split("/n")):
         start = match.index
         if first:
             first = False
@@ -78,6 +95,22 @@ def tts_data(text_node, offset):
         trailer = text[last:]
         if trailer:
             marked_text.push(trailer)
+    js_code = '''
+    fetch('https://jsonplaceholder.typicode.com/todos/1')
+        .then(response => {
+            if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json(); // Assuming the content is JSON
+        })
+        .then(data => {
+            console.log(data); // Print the fetched text
+        })
+    '''
+
+    # Now, you can execute the JavaScript code using eval() or other methods
+    eval(js_code)
+    print(marked_text)
     return marked_text
 
 
@@ -173,10 +206,14 @@ def select_tts_mark(idx_in_flat_text):
     r = tts_word_regex()
     r.lastIndex = idx_in_flat_text
     match = v'r.exec(cache.text_map.flat_text)'
-    word_length = 5
+    # word_length = 100
     if match:
-        word_length = match[0]?.length or 5
+        word_length = match[0]?.length 
+    # print("cache.text_map.node_list", cache.text_map.node_list)
     match = get_occurrence_data(cache.text_map.node_list, idx_in_flat_text, idx_in_flat_text + word_length)
+    # print( match, not match)
+    # print("idx_in_flat_text",idx_in_flat_text)
+    # print(r)
     if not match:
         return False
     return select_find_result(match)

@@ -341,6 +341,7 @@ class EbookViewer(MainWindow):
             self.web_view.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def toggle_bookmarks(self):
+        print("toggle_bookmarks")
         is_visible = self.bookmarks_dock.isVisible()
         self.bookmarks_dock.setVisible(not is_visible)
         if is_visible:

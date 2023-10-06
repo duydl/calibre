@@ -393,6 +393,7 @@ def run_in_debug_mode():
 
 
 def run_gui(opts, args, app, gui_debug=None):
+    print("library run gui")
     with SingleInstance('db') as si:
         if not si:
             ext = '.exe' if iswindows else ''

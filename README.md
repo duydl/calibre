@@ -93,3 +93,8 @@ https://manual.calibre-ebook.com/dev...on-environment
 # 4 Change Jap encoder 
 
 New 'from calibre.ebooks.unihandecode.pykakasi.kakasi import Kakasi'
+
+"src\calibre\ebooks\unihandecode"
+src\calibre\ebooks\unihandecode\__init__.py
+src\calibre\ebooks\unihandecode\jadecoder.py
+

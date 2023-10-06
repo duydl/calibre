@@ -143,11 +143,13 @@ View an e-book.
 
 
 def run_gui(app, opts, args, internal_book_data, listener=None):
+    print("viewer run gui")
     acc = EventAccumulator(app)
     app.file_event_hook = acc
     app.load_builtin_fonts()
     app.setWindowIcon(QIcon.ic('viewer.png'))
     migrate_previous_viewer_prefs()
+    print("app", app, "opts", opts, "args", args, "book_data", internal_book_data)
     main = EbookViewer(
         open_at=opts.open_at, continue_reading=opts.continue_reading, force_reload=opts.force_reload,
         calibre_book_data=internal_book_data)
@@ -199,12 +201,14 @@ def main(args=sys.argv):
     parser = option_parser()
     opts, args = parser.parse_args(args)
     oat = opts.open_at
+    
     if oat and not (
             oat.startswith('toc:') or oat.startswith('toc-href:') or oat.startswith('toc-href-contains:') or
             oat.startswith('epubcfi(/') or is_float(oat) or oat.startswith('ref:') or oat.startswith('search:') or oat.startswith('regex:')):
         raise SystemExit(f'Not a valid --open-at value: {opts.open_at}')
 
     if get_session_pref('singleinstance', False):
+        print("get_session_pref")
         from calibre.gui2.listener import Listener
         from calibre.utils.lock import SingleInstance
         with SingleInstance(singleinstance_name) as si:
@@ -222,6 +226,8 @@ def main(args=sys.argv):
             else:
                 send_message_to_viewer_instance(args, opts.open_at)
     else:
+        print("get_session_pref FALSE")
+        print("app", app, "opts", opts, "args", args, "book_data", internal_book_data)
         run_gui(app, opts, args, internal_book_data)
 
 

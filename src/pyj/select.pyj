@@ -5,11 +5,24 @@ from __python__ import bound_methods, hash_literals
 
 if document?.caretPositionFromPoint:
     caret_position_from_point = document.caretPositionFromPoint.bind(document)
+    print("support or")
 else:
+    # print("not support")
+    
     caret_position_from_point = def(x, y):
-        r = document.caretRangeFromPoint(x, y)
+        r = document.elementFromPoint(x, y)
+        if r and r.startContainer and r.startContainer.nodeType == Node.ELEMENT_NODE:
+            spanElement = r.startContainer
+            # print(spanElement.textContent)
+            # Check if the element is a span and has an 'id' attribute.
+            if spanElement.tagName == 'SPAN' and spanElement.hasAttribute('id'):
+                spanId = spanElement.getAttribute('id')
+                # print(spanId)
+        print("not supportxxx", r)
         if r:
+            print("return r", r, r.startContainer, r.startOffset, {'offsetNode': r.startContainer, 'offset': r.startOffset})
             return {'offsetNode': r.startContainer, 'offset': r.startOffset}
+        print("return None", r)
         return None
 
 
@@ -33,6 +46,7 @@ def expand_offset_to_word(string, offset):
 
 def word_at_point(x, y):
     p = caret_position_from_point(x, y)
+    # print("p", p.offsetNode?.nodeType)
     if p and p.offsetNode?.nodeType is Node.TEXT_NODE:
         word_info = expand_offset_to_word(p.offsetNode.data, p.offset)
         if word_info.word:
@@ -41,6 +55,16 @@ def word_at_point(x, y):
             r.setEnd(p.offsetNode, word_info.end)
             return r
 
+# def word_at_point(x, y):
+#     p = caret_position_from_point(x, y)
+#     if p:
+#         parentElement = p.offsetNode
+#         print("parentElement", parentElement.tagName)
+#         if parentElement.tagName == 'SPAN':
+#         # Get the id attribute of the <span> element
+#             spanId = parentElement.id
+#             return spanId
+#     return 'Falure'
 
 def first_visible_word():
     width = window.innerWidth

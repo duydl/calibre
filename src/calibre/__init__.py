@@ -8,7 +8,7 @@ from polyglot.builtins import codepoint_to_chr, hasenv, native_string_type
 from math import floor
 from functools import partial
 
-print ("Hello, world!")
+print ("Onepi Test started")
 
 if not hasenv('CALIBRE_SHOW_DEPRECATION_WARNINGS'):
     warnings.simplefilter('ignore', DeprecationWarning)

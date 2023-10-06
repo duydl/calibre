@@ -126,7 +126,7 @@ class Client:
         self.clear_chunks()
         self.current_callback = None
         if text:
-            self.backend.speak(text)
+            self.backend.speak("text")
 
     def speak_marked_text(self, text, callback):
         self.backend.pause()

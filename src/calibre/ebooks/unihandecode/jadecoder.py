@@ -37,6 +37,7 @@ class Jadecoder(Unidecoder):
 
             result = self.kakasi.convert(text)
             return ''.join([d['hepburn'].capitalize() if 
+            # return ''.join([d['orig'].capitalize() if 
             bool(re.search(r'[^\x00-\x7F]', d['orig'])) else d['orig'] for d in result])
 
 

@@ -252,3 +252,4 @@ class ReadAloud:
             if msg.pos:
                 self.stop()
             ui_operations.tts('play', {'marked_text': msg.marked_text})
+            # print("ui_operations", ui_operations)

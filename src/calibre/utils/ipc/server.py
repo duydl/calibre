@@ -157,7 +157,10 @@ class Server(Thread):
         self.add_jobs_queue.put(job)
 
     def run_job(self, job, gui=True, redirect_output=False):
+        print("def run_job(self,")
+        print(job)
         w = self.launch_worker(gui=gui, redirect_output=redirect_output, job_name=getattr(job, 'name', None))
+        
         w.start_job(job)
 
     def run(self):
@@ -212,6 +215,7 @@ class Server(Thread):
                     job.killed = job.failed = True
                     job.result = None
                 else:
+                    print("worker = self.launch_worker()")
                     worker = self.launch_worker()
                     worker.start_job(job)
                     self.workers.append(worker)
