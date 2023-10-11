@@ -52,6 +52,7 @@ class Messenger:
 class IframeWrapper:
 
     def __init__(self, handlers, iframe, entry_point, bootstrap_text):
+        
         self.messenger = Messenger()
         self.iframe_id = ensure_id(iframe, 'content-iframe')
         self.reload_count = 0
@@ -123,12 +124,14 @@ class IframeWrapper:
         msg = {'data':data, 'encrypted': encrypted}
         if encrypted:
             msg.data = self.messenger.encrypt(data)
+        print("iframe_comm def _send_message", action)
         self.iframe.contentWindow.postMessage(msg, '*')
 
     def send_message(self, action, **data):
         self._send_message(action, self.encrypted_communications, data)
 
     def send_unencrypted_message(self, action, **data):
+        print("def send_unencrypted_message(self, action, **data)")
         self._send_message(action, False, data)
 
     def handle_message(self, event):
@@ -192,6 +195,12 @@ class IframeClient:
         self.initialize_handler = handlers.initialize
         self.handlers.initialize = self.initialize
         self.ready_sent = False
+
+        # document.appendChild(E.audio(
+        #     id=self.audio_id,
+        #     style='display: flex;',
+        #     src='OEPBS/Audio/01.mp3'))
+
         window.addEventListener('message', self.handle_message, False)
         window.addEventListener('load', self.send_ready, {'once': True})
 

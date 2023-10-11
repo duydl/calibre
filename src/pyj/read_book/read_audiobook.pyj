@@ -26,7 +26,7 @@ def is_flow_mode():
     return mode is 'flow'
 
 
-class ReadAloud:
+class ReadAudiobook:
 
     dont_hide_on_content_loaded = True
 
@@ -34,6 +34,7 @@ class ReadAloud:
         self.view = view
         self._state = HIDDEN
         self.bar_id = unique_id('bar')
+        self.audio_id = unique_id('audio')
         container = self.container
         container.setAttribute('tabindex', '0')
         container.style.overflow = 'hidden'
@@ -44,6 +45,16 @@ class ReadAloud:
             style='border: solid 1px currentColor; border-radius: 5px;'
             'display: flex; flex-direction: column; margin: 1rem;'
         ))
+        
+        container.appendChild(E.audio(
+            id=self.audio_id,
+            style='display: flex;',
+            src='book/OEBPS/Audio/01.mp3',
+            # clbr://internal.sandbox/book/OEBPS/Audio/01.mp3
+            controls="controls"
+        )) # not work, src is from iframe 
+
+
         container.appendChild(E.style(
             f'#{self.bar_id}.speaking '+'{ opacity: 0.5 }\n\n',
             f'#{self.bar_id}.speaking:hover '+'{ opacity: 1.0 }\n\n',
@@ -52,9 +63,11 @@ class ReadAloud:
         container.addEventListener('click', self.container_clicked, {'passive': False})
         container.addEventListener('contextmenu', self.toggle, {'passive': False})
 
+        self.audioplayer = document.getElementById(self.audio_id)
+
     @property
     def container(self):
-        return document.getElementById('book-read-aloud-overlay')
+        return document.getElementById('audio-ebooks-overlay')
 
     @property
     def supports_css_min_max(self):
@@ -157,31 +170,40 @@ class ReadAloud:
             else:
                 notes_container.textContent = _('Tap/click on a word to continue from there')
 
+    
+    
+
     def configure(self):
         self.pause()
         self.waiting_for_configure = True
         ui_operations.tts('configure')
 
     def slower(self):
-        ui_operations.tts('slower')
+        # ui_operations.tts('slower')
+        self.audioplayer.playbackRate += 0.2
+        print(self.audioplayer.currentTime)
+        
 
     def faster(self):
-        ui_operations.tts('faster')
+        # ui_operations.tts('faster')
+        self.audioplayer.playbackRate -= 0.2
+        print(self.audioplayer.currentTime)
 
     def play(self):
         if self.state is PAUSED:
-            ui_operations.tts('resume_after_configure' if self.waiting_for_configure else 'resume')
+            # ui_operations.tts('resume_after_configure' if self.waiting_for_configure else 'resume')
+            self.audioplayer.play()
             self.waiting_for_configure = False
             self.state = PLAYING
         elif self.state is STOPPED:
-            # self.audioplayer.play()
-            self.send_message('play')
+            self.audioplayer.play()
+            # self.send_message('play')
             self.state = WAITING_FOR_PLAY_TO_START
 
     def pause(self):
         if self.state is PLAYING:
-            ui_operations.tts('pause')
-            # self.audioplayer.pause()
+            # ui_operations.tts('pause')
+            self.audioplayer.pause()
             self.state = PAUSED
 
     def stop(self):
@@ -197,14 +219,14 @@ class ReadAloud:
 
     def container_clicked(self, ev):
         
-        # self.audioplayer.play()
-        if ev.button is not 0:
-            return
-        ev.stopPropagation(), ev.preventDefault()
-        margins = get_margins()
-        pos = {'x': ev.clientX, 'y': ev.clientY}
-        pos = map_to_iframe_coords(pos, margins)
-        self.send_message('play', pos=pos)
+        self.audioplayer.play()
+        # if ev.button is not 0:
+        #     return
+        # ev.stopPropagation(), ev.preventDefault()
+        # margins = get_margins()
+        # pos = {'x': ev.clientX, 'y': ev.clientY}
+        # pos = map_to_iframe_coords(pos, margins)
+        # self.send_message('play', pos=pos)
 
     def on_keydown(self, ev):
         ev.stopPropagation(), ev.preventDefault()

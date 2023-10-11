@@ -25,10 +25,12 @@ def load_resources(book, root_name, previous_resources, proceed):
     ans = Object.create(None)
     pending_resources = v'[root_name]'
     link_pat = create_link_pat(book)
-
+    print("resources.pyj", root_name)
     def do_one():
         name = pending_resources.shift()
+        print("do_one()", name, root_name)
         if not name:
+            # print(previous_resources)
             for k in previous_resources:
                 v'delete previous_resources[k]'
             if book.manifest.files[root_name].has_maths:
@@ -41,15 +43,18 @@ def load_resources(book, root_name, previous_resources, proceed):
             if jstype(data[0]) is 'string':
                 find_virtualized_resources(data[0])
             return setTimeout(do_one, 0)
+        print("resources.pyj  ui_operations.get_file")
         ui_operations.get_file(book, name, got_one)
 
     def got_one(data, name, mimetype):
         ans[name] = v'[data, mimetype]'
+        print("resources.pyj got_one", name)
         if jstype(data) is 'string' and book.manifest.files[name]?.is_virtualized:
             find_virtualized_resources(data)
         return setTimeout(do_one, 0)
 
     def find_virtualized_resources(text):
+        print("find_virtualized_resources(text)", text)
         seen = set()
         already_pending = {x.name for x in pending_resources}
         link_pat.lastIndex = 0

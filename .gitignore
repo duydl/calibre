@@ -1,3 +1,5 @@
+.gitignore
+mynotes
 *_ui.py
 *.pyc
 *.pyo

@@ -608,7 +608,7 @@ class EbookViewer(MainWindow):
         rates = load_reading_rates(self.current_book_data['annotations_path_key'])
         self.web_view.start_book_load(initial_position=initial_position, highlights=highlights, current_book_data=self.current_book_data, reading_rates=rates)
         performance_monitor('webview loading requested')
-
+        
     def load_book_data(self, calibre_book_data=None):
         self.current_book_data['book_library_details'] = get_book_library_details(self.current_book_data['pathtoebook'])
         if calibre_book_data is not None:

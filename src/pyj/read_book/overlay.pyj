@@ -348,6 +348,12 @@ class MainOverlay:  # {{{
                self.overlay.view.start_read_aloud()
             , 'bullhorn')
         ))
+        actions_div.appendChild(E.ul(
+            ac(_('Read audiobook'), _('Play audiobook'), def():
+               self.overlay.hide()
+               self.overlay.view.start_read_audiobook()
+            , 'bullhorn')
+        ))
 
         if full_screen_actions.length:
             actions_div.appendChild(E.ul(*full_screen_actions))
