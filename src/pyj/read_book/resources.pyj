@@ -28,7 +28,7 @@ def load_resources(book, root_name, previous_resources, proceed):
     print("resources.pyj", root_name)
     def do_one():
         name = pending_resources.shift()
-        print("do_one()", name, root_name)
+        print("def load_resources do_one()", name, root_name)
         if not name:
             # print(previous_resources)
             for k in previous_resources:
@@ -48,7 +48,6 @@ def load_resources(book, root_name, previous_resources, proceed):
 
     def got_one(data, name, mimetype):
         ans[name] = v'[data, mimetype]'
-        print("resources.pyj got_one", name)
         if jstype(data) is 'string' and book.manifest.files[name]?.is_virtualized:
             find_virtualized_resources(data)
         return setTimeout(do_one, 0)
@@ -98,7 +97,7 @@ def finalize_resources(book, root_name, resource_data):
             blob_url_map[name] = window.URL.createObjectURL(data)
     for name in blob_url_map:
         v'delete resource_data[name]'
-
+    print("def finalize_resources rootname", root_name)
     def add_virtualized_resource(name, text, mimetype):
         nonlocal root_data
         if name is root_name:

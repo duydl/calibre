@@ -163,6 +163,7 @@ class IframeBoss:
             'handle_navigation_shortcut': self.on_handle_navigation_shortcut,
             'annotations': self.annotations_msg_received,
             'tts': self.tts_msg_received,
+            'audioebook': self.audioebook_msg_received,
             'hints': self.hints_msg_received,
             'copy_selection': self.copy_selection,
             'replace_highlights': self.replace_highlights,
@@ -307,7 +308,7 @@ class IframeBoss:
             window.URL.revokeObjectURL(self.blob_url_map[name])
         document.body.style.removeProperty('font-family')
         root_data, self.mathjax, self.blob_url_map = finalize_resources(self.book, data.name, data.resource_data)
-        print("iframe.pyj, root_data, self.mathjax, self.blob_url_map" )
+        print("iframe.pyj, root_data, self.mathjax, self.blob_url_map, where it finally render the html" )
         self.highlights_to_apply = data.highlights
         unserialize_html(root_data, self.content_loaded, None, data.name)
 
@@ -997,6 +998,26 @@ class IframeBoss:
             self.send_message('tts', type='text-extracted', marked_text=marked_text, pos=data.pos)
         elif data.type is 'trigger-shortcut':
             self.on_handle_navigation_shortcut(data)
+
+
+    def audioebook_msg_received(self, data):
+        if data.type is 'mark':
+            self.mark_word_being_spoken(data.num)
+        elif data.type is 'play':
+            text_node, offset = None, 0
+            if data.pos:
+                r = word_at_point(data.pos.x, data.pos.y)
+            else:
+                r = first_visible_word()
+            if r and r.startContainer?.nodeType is Node.TEXT_NODE:
+                text_node, offset = r.startContainer, r.startOffset
+            marked_text = tts_data(text_node, offset)
+            sel = window.getSelection()
+            sel.removeAllRanges()
+            self.send_message('tts', type='text-extracted', marked_text=marked_text, pos=data.pos)
+        elif data.type is 'trigger-shortcut':
+            self.on_handle_navigation_shortcut(data)
+
 
     def mark_word_being_spoken(self, occurrence_number):
         self.last_search_at = window.performance.now()

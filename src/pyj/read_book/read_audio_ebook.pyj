@@ -27,14 +27,15 @@ def is_flow_mode():
 
 
 class ReadAudioEbook:
-
+    
     dont_hide_on_content_loaded = True
 
     def __init__(self, view):
         self.view = view
+        self.parser = new window.DOMParser()
         self._state = HIDDEN
         self.bar_id = unique_id('bar')
-        self.audio_id = unique_id('audio')
+        
         container = self.container
         container.setAttribute('tabindex', '0')
         container.style.overflow = 'hidden'
@@ -44,16 +45,26 @@ class ReadAudioEbook:
             id=self.bar_id,
             style='border: solid 1px currentColor; border-radius: 5px;'
             'display: flex; flex-direction: column; margin: 1rem;'
-        ))
-        
+        )) 
+
+        self.audio_id = unique_id('audio')
         container.appendChild(E.audio(
             id=self.audio_id,
             style='display: flex;',
-            src='book/OEBPS/Audio/01.mp3',
+            src='',
+            # src='book/OEBPS/Audio/01.mp3',
+            # src="book/OEBPS" + audioFile[1:],
             # clbr://internal.sandbox/book/OEBPS/Audio/01.mp3
             controls="controls"
         )) # not work, src is from iframe 
+        self.audioplayer = document.getElementById(self.audio_id) 
 
+        self.audioMaps = {}
+        self.smilFiles = self.view.smil_files
+
+        for smilFile in self.smilFiles:
+            ui_operations.get_file(
+                self.view.book, smilFile, self.parse_smil_file)
 
         container.appendChild(E.style(
             f'#{self.bar_id}.speaking '+'{ opacity: 0.5 }\n\n',
@@ -62,8 +73,45 @@ class ReadAudioEbook:
         container.addEventListener('keydown', self.on_keydown, {'passive': False})
         container.addEventListener('click', self.container_clicked, {'passive': False})
         container.addEventListener('contextmenu', self.toggle, {'passive': False})
+        
 
-        self.audioplayer = document.getElementById(self.audio_id)
+    def parse_smil_file(self, smil_content, smil_name, mimetype):
+        # Parse the XML string
+        xmlDoc = self.parser.parseFromString(smil_content, 'text/xml')
+
+        audioMap = {}
+        audioFiles = set()
+
+        # Extract information from the parsed XML
+        parElements = xmlDoc.getElementsByTagName('par')
+        for parElement in parElements:
+            textElement = parElement.getElementsByTagName('text')[0]
+            audioElement = parElement.getElementsByTagName('audio')[0]
+            if textElement and audioElement:
+                spanID = textElement.getAttribute('src').split('#')[1]
+                audioDetails = {
+                    'src': audioElement.getAttribute('src'),
+                    'clipBegin': audioElement.getAttribute('clipBegin'),
+                    'clipEnd': audioElement.getAttribute('clipEnd')
+                    # Add more audio details as needed
+                }
+                audioMap[spanID] = audioDetails
+                audioFiles.add(audioElement.getAttribute('src'))
+
+        self.audioMaps[smil_name[:-5]] = [audioMap, list(audioFiles)]
+        self.append_audio()
+
+    def append_audio(self):
+
+        if self.audioMaps[self.text_name]:
+            self.audioplayer.src = self.get_audio_src(self.text_name)
+        else:
+            self.audioplayer.src = ""
+
+    def get_audio_src(self, audio_name):
+
+        return "book/OEBPS" + self.audioMaps[audio_name][1][0][1:]
+
 
     @property
     def container(self):
@@ -94,7 +142,7 @@ class ReadAudioEbook:
     def hide(self):
         if self.state is not HIDDEN:
             self.audioplayer.pause()
-            ui_operations.tts('stop')
+            # ui_operations.tts('stop')
             self.state = HIDDEN
             self.container.style.display = 'none'
             self.view.focus_iframe()
@@ -170,28 +218,25 @@ class ReadAudioEbook:
             else:
                 notes_container.textContent = _('Tap/click on a word to continue from there')
 
-    
-    
-
     def configure(self):
         self.pause()
         self.waiting_for_configure = True
-        ui_operations.tts('configure')
+        # ui_operations.tts('configure')
 
     def slower(self):
-        # ui_operations.tts('slower')
+        # # ui_operations.tts('slower')
         self.audioplayer.playbackRate += 0.2
         print(self.audioplayer.currentTime)
         
 
     def faster(self):
-        # ui_operations.tts('faster')
+        # # ui_operations.tts('faster')
         self.audioplayer.playbackRate -= 0.2
         print(self.audioplayer.currentTime)
 
     def play(self):
         if self.state is PAUSED:
-            # ui_operations.tts('resume_after_configure' if self.waiting_for_configure else 'resume')
+            # # ui_operations.tts('resume_after_configure' if self.waiting_for_configure else 'resume')
             self.audioplayer.play()
             self.waiting_for_configure = False
             self.state = PLAYING
@@ -202,13 +247,13 @@ class ReadAudioEbook:
 
     def pause(self):
         if self.state is PLAYING:
-            # ui_operations.tts('pause')
+            # # ui_operations.tts('pause')
             self.audioplayer.pause()
             self.state = PAUSED
 
     def stop(self):
         if self.state is PLAYING or self.state is PAUSED:
-            ui_operations.tts('stop')
+            # ui_operations.tts('stop')
             self.state = STOPPED
 
     def toggle(self):
@@ -218,15 +263,14 @@ class ReadAudioEbook:
             self.play()
 
     def container_clicked(self, ev):
-        
         self.audioplayer.play()
-        # if ev.button is not 0:
-        #     return
-        # ev.stopPropagation(), ev.preventDefault()
-        # margins = get_margins()
-        # pos = {'x': ev.clientX, 'y': ev.clientY}
-        # pos = map_to_iframe_coords(pos, margins)
-        # self.send_message('play', pos=pos)
+        if ev.button is not 0:
+            return
+        ev.stopPropagation(), ev.preventDefault()
+        margins = get_margins()
+        pos = {'x': ev.clientX, 'y': ev.clientY}
+        pos = map_to_iframe_coords(pos, margins)
+        self.send_message('play', pos=pos)
 
     def on_keydown(self, ev):
         ev.stopPropagation(), ev.preventDefault()
@@ -256,7 +300,7 @@ class ReadAudioEbook:
         elif sc_name in ('up', 'down', 'pageup', 'pagedown', 'left', 'right'):
             self.send_message('trigger-shortcut', name=sc_name)
 
-    def handle_tts_event(self, which, data):
+    def handle_audioebook_event(self, which, data):
         if which is 'mark':
             self.send_message('mark', num=data)
         elif which is 'begin':
@@ -272,10 +316,10 @@ class ReadAudioEbook:
                 pass
 
     def send_message(self, type, **kw):
-        self.view.iframe_wrapper.send_message('tts', type=type, **kw)
+        self.view.iframe_wrapper.send_message('audioebook', type=type, **kw)
 
     def handle_message(self, msg):
         if msg.type is 'text-extracted':
             if msg.pos:
                 self.stop()
-            ui_operations.tts('play', {'marked_text': msg.marked_text})
+            # ui_operations.tts('play', {'marked_text': msg.marked_text})

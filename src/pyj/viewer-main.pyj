@@ -44,7 +44,7 @@ def file_received(name, file_data, proceed, end_type, xhr, ev):
         show_error(_('Failed to load file from book'), _(
             'Could not load the file: {} with error: {}').format(name, xhr.error_html))
         return
-    print("viewer-main.pyj file_received")
+    print("viewer-main.pyj file_received. This is where file get pass around the program.")
     if not xhr.responseType or xhr.responseType is 'text':
         result = xhr.responseText
     else if xhr.responseType is 'blob':
@@ -64,7 +64,7 @@ def get_file(book, name, proceed):
     if not entry:
         raise ValueError(f'No file named {name} in the book manifest')
     xhr = ajax('book/' + name, file_received.bind(None, name, entry, proceed), ok_code=0)
-    if entry.is_html or entry.mimetype.startswith('text/') or entry.mimetype is 'application/javascript':
+    if entry.is_html or entry.mimetype.startswith('text/') or entry.mimetype is 'application/javascript' or "smil" in entry.mimetype:
         xhr.responseType = 'text'
     else:
         xhr.responseType = 'blob'
@@ -105,7 +105,6 @@ def manifest_received(key, initial_position, pathtoebook, highlights, book_url, 
         book = new_book(key, {})
         print("manifest_received")
         data = xhr.response
-        print("data is first received here")
         book.manifest = data[0]
         book.metadata = book.manifest.metadata = data[1]
         book.manifest.pathtoebook = pathtoebook
@@ -117,6 +116,7 @@ def manifest_received(key, initial_position, pathtoebook, highlights, book_url, 
         book.is_complete = True
         v'delete book.manifest["metadata"]'
         v'delete book.manifest["last_read_positions"]'
+        print("view.pyj display_book first called here")
         view.display_book(book, initial_position)
     else:
         show_error(_('Could not open book'), _(
@@ -192,6 +192,7 @@ def create_view(prefs, local_storage, field_metadata, ui_data):
         return format_date(d, ui_data.short_time_fmt)
     )
     if view is None:
+        print("viewer-main.pyj view is created")
         create_session_data(prefs, local_storage)
         view = View(document.getElementById('view'))
         window.addEventListener('resize', debounce(view.on_resize.bind(self), 250))

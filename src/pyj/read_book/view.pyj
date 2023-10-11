@@ -267,6 +267,7 @@ class View:
             'search_result_discovered': self.search_result_discovered,
             'annotations': self.on_annotations_message,
             'tts': self.on_tts_message,
+            'audioebook': self.on_audioebook_message,
             'hints': self.on_hints_message,
             'copy_text_to_clipboard': def(data):
                 ui_operations.copy_selection(data.text, data.html)
@@ -313,13 +314,7 @@ class View:
                         E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; overflow: auto; display:none', id='book-overlay'),  # main overlay
                         E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; display:none', id='controls-help-overlay'),  # controls help overlay
 
-
-                        E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; display:none', id='audio-ebooks-overlay', 
-                            # E.audio(
-                            #     id=self.audio_id,
-                            #     style='display: flex;',
-                            #     src='../Audio/01.mp3')
-                                ),  
+                        E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; display:none', id='audio-ebooks-overlay'),  
                     )
                 ),
             ),
@@ -334,7 +329,7 @@ class View:
         self.overlay = Overlay(self)
         self.selection_bar = SelectionBar(self)
         self.read_aloud = ReadAloud(self)
-        self.read_audio_ebook = ReadAudioEbook(self)
+        # self.read_audio_ebook = ReadAudioEbook(self)
         self.hints = Hints(self)
         self.modal_overlays = v'[self.selection_bar, self.read_aloud, self.hints]'
         self.processing_spine_item_display = False
@@ -380,6 +375,9 @@ class View:
 
     def on_tts_message(self, data):
         self.read_aloud.handle_message(data)
+
+    def on_audioebook_message(self, data):
+        self.read_audio_ebook.handle_message(data)
 
     def on_hints_message(self, data):
         self.hints.handle_message(data)
@@ -707,6 +705,7 @@ class View:
         else:
             self.start_read_aloud()
 
+
     def toggle_hints(self):
         if self.hints.is_visible:
             self.hints.hide()
@@ -928,6 +927,7 @@ class View:
         ui_operations.reload_book()
 
     def display_book(self, book, initial_position, is_redisplay):
+
         self.hide_overlays()
         self.iframe.focus()
         is_current_book = self.book and self.book.key == book.key
@@ -944,6 +944,7 @@ class View:
             self.search_overlay.clear_caches(book)
         unkey = username_key(get_interface_data().username)
         self.book = current_book.book = book
+
         hl = None
         if not is_redisplay:
             if runtime.is_standalone_viewer:
@@ -964,13 +965,6 @@ class View:
             return
         name = book.manifest.spine[0]
         print("view.pyj - displaybook", book.manifest.spine)
-        smil_files = []
-        for filename in book.manifest.files:
-            if filename.endswith(".smil"):
-                smil_files.append(filename)
-        if len(smil_files) != 0:
-            self.is_audio_ebook = True
-            self.smil_files = smil_files
 
         cfi = None
         if initial_position and initial_position.type is 'cfi' and initial_position.data.startswith('epubcfi(/'):
@@ -1007,6 +1001,19 @@ class View:
             if c < 2:
                 show_controls_help()
                 sd.set('controls_help_shown_count' + ('_rtl_page_progression' if rtl_page_progression() else ''), c + 1)
+
+        smil_files = []
+        for filename in book.manifest.files:
+            if filename.endswith(".smil"):
+                smil_files.append(filename)
+        if len(smil_files) != 0:
+            self.is_audio_ebook = True
+            self.smil_files = smil_files
+            self.read_audio_ebook = ReadAudioEbook(self)
+            # Test concurrent later!!
+            self.read_audio_ebook.text_name = name
+        # else:
+        #     self.read_aloud = ReadAloud(self)
 
     def preferences_changed(self):
         self.set_margins()
@@ -1079,6 +1086,10 @@ class View:
         self.set_margins()
         print("view.pyj show_name", name)
         self.load_doc(name, self.show_spine_item)
+
+        if self.is_audio_ebook:
+            self.read_audio_ebook.text_name = name
+            self.read_audio_ebook.append_audio()
 
     def load_doc(self, name, done_callback):
         def cb(resource_data):

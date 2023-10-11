@@ -202,7 +202,7 @@ class ReadUI:
 
     def close_book(self):
         self.base_url_data = {}
-
+    
     def copy_image(self, image_file_name):
         if not self.view?.book:
             return
@@ -607,6 +607,7 @@ class ReadUI:
             self.display_book_stage2(book)
 
     def display_book_stage2(self, book):
+        print("def display_book_stage2(self, book)")
         self.current_metadata = book.metadata
         update_window_title('', self.current_metadata.title)
         self.show_stack(self.display_id)
