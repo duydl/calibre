@@ -34,7 +34,7 @@ from read_book.prefs.scrolling import (
     MIN_SCROLL_SPEED_AUTO as SCROLL_SPEED_STEP, change_scroll_speed
 )
 from read_book.read_aloud import ReadAloud
-from read_book.read_audiobook import ReadAudiobook
+from read_book.read_audio_ebook import ReadAudioEbook
 from read_book.resources import load_resources
 from read_book.scrollbar import BookScrollbar
 from read_book.search import SearchOverlay
@@ -334,7 +334,7 @@ class View:
         self.overlay = Overlay(self)
         self.selection_bar = SelectionBar(self)
         self.read_aloud = ReadAloud(self)
-        self.read_audiobook = ReadAudiobook(self)
+        self.read_audio_ebook = ReadAudioEbook(self)
         self.hints = Hints(self)
         self.modal_overlays = v'[self.selection_bar, self.read_aloud, self.hints]'
         self.processing_spine_item_display = False
@@ -684,34 +684,28 @@ class View:
 
     def start_read_aloud(self, dont_start_talking):
         # Here is where you add condition to read audio instead of tts!!!
-        for x in self.modal_overlays:
-            if x is not self.read_aloud:
-                x.hide()
-        self.read_aloud.show()
-        if not dont_start_talking:
-            self.read_aloud.play()
+        if self.is_audio_ebook:
+            for x in self.modal_overlays:
+                if x is not self.read_audio_ebook:
+                    x.hide()
+            self.read_audio_ebook.show()
+            if not dont_start_talking:
+                self.read_audio_ebook.play()
+        else:
+            for x in self.modal_overlays:
+                if x is not self.read_aloud:
+                    x.hide()
+            self.read_aloud.show()
+            if not dont_start_talking:
+                self.read_aloud.play()
 
     def toggle_read_aloud(self):
-        if self.read_aloud.is_visible:
+        if self.read_audio_ebook.is_visible:
+            self.read_audio_ebook.hide()
+        elif self.read_aloud.is_visible:
             self.read_aloud.hide()
         else:
             self.start_read_aloud()
-            
-
-    def start_read_audiobook(self, dont_start_talking):
-        # Here is where you add condition to read audio instead of tts!!!
-        for x in self.modal_overlays:
-            if x is not self.read_audiobook:
-                x.hide()
-        self.read_audiobook.show()
-        if not dont_start_talking:
-            self.read_audiobook.play()
-
-    def toggle_read_audiobook(self):
-        if self.read_audiobook.is_visible:
-            self.read_read_audiobook.hide()
-        else:
-            self.start_read_audiobook()
 
     def toggle_hints(self):
         if self.hints.is_visible:
@@ -970,6 +964,14 @@ class View:
             return
         name = book.manifest.spine[0]
         print("view.pyj - displaybook", book.manifest.spine)
+        smil_files = []
+        for filename in book.manifest.files:
+            if filename.endswith(".smil"):
+                smil_files.append(filename)
+        if len(smil_files) != 0:
+            self.is_audio_ebook = True
+            self.smil_files = smil_files
+
         cfi = None
         if initial_position and initial_position.type is 'cfi' and initial_position.data.startswith('epubcfi(/'):
             cfi = initial_position.data

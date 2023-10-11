@@ -80,7 +80,6 @@ class ReadAloud:
 
     def hide(self):
         if self.state is not HIDDEN:
-            self.audioplayer.pause()
             ui_operations.tts('stop')
             self.state = HIDDEN
             self.container.style.display = 'none'
@@ -174,14 +173,12 @@ class ReadAloud:
             self.waiting_for_configure = False
             self.state = PLAYING
         elif self.state is STOPPED:
-            # self.audioplayer.play()
             self.send_message('play')
             self.state = WAITING_FOR_PLAY_TO_START
 
     def pause(self):
         if self.state is PLAYING:
             ui_operations.tts('pause')
-            # self.audioplayer.pause()
             self.state = PAUSED
 
     def stop(self):
@@ -196,8 +193,6 @@ class ReadAloud:
             self.play()
 
     def container_clicked(self, ev):
-        
-        # self.audioplayer.play()
         if ev.button is not 0:
             return
         ev.stopPropagation(), ev.preventDefault()
