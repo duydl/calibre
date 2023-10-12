@@ -314,7 +314,7 @@ class View:
                         E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; overflow: auto; display:none', id='book-overlay'),  # main overlay
                         E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; display:none', id='controls-help-overlay'),  # controls help overlay
 
-                        E.div(style='position: absolute; top:0; left:0; width: 100%; height: 100%; display:none', id='audio-ebooks-overlay'),  
+                        E.div(style='position: absolute; bottom:0em; left:1.5em; right:1.5em; width: calc(100% - 3em); height: 100%; display:none', id='audio-ebooks-overlay'),  
                     )
                 ),
             ),
@@ -1097,6 +1097,7 @@ class View:
 
         if self.is_audio_ebook:
             self.read_audio_ebook.append_audio()
+            self.audioMap = self.audioMaps
 
     def load_doc(self, name, done_callback):
         def cb(resource_data):

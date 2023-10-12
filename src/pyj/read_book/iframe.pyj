@@ -64,6 +64,7 @@ from read_book.touch import (
     create_handlers as create_touch_handlers, reset_handlers as reset_touch_handlers
 )
 from read_book.viewport import scroll_viewport
+from book_list.theme import get_color
 from select import (
     first_visible_word, is_start_closer_to_point, move_end_of_selection,
     selection_extents, word_at_point, span_at_point
@@ -561,6 +562,7 @@ class IframeBoss:
             self.update_toc_position()
 
     def no_latency_onscroll(self):
+        print("scrollscroll")
         pf = self.calculate_progress_frac()
         fpf = progress_frac()
         self.send_message(
@@ -1006,32 +1008,35 @@ class IframeBoss:
 
 
     def audioebook_msg_received(self, data):
-        print("def audioebook_msg_received(self, data)", data)
-        if data.type is 'mark':
-            self.mark_span_id(data.old_spanID, data.spanID)
-        elif data.type is 'play':
 
+        if data.type is 'color':
+            self.color_spanID(data.old_spanID, data.spanID)
+        elif data.type is 'play':
             if data.pos:
-                r = span_at_point(data.pos.x, data.pos.y)
-            
-            self.send_message('audioebook', type='container-clicked', spanID=r)
+                spanID = span_at_point(data.pos.x, data.pos.y)
+                self.send_message('audioebook', type='container-clicked', spanID=spanID)
         elif data.type is 'trigger-shortcut':
             self.on_handle_navigation_shortcut(data)
+        elif data.type is 'scroll':
+            self.no_latency_onscroll()
 
-    def mark_span_id(self, old_spanId, spanId):
+    def color_spanID(self, old_spanId, spanId):
         element = document.getElementById(spanId)
         old_element = document.getElementById(old_spanId)
 
-        if old_element and element:
-            print("here")
-            old_element.style.backgroundColor = element.style.backgroundColor
-            element.style.backgroundColor = "black" 
-            element.focus()
+        if old_element:
+            old_element.style.backgroundColor = ''
 
-        elif element:
-            element.style.backgroundColor = "black" 
-            element.focus()
+        if element:
+            element.style.backgroundColor = window.getComputedStyle(document.documentElement, '::selection').backgroundColor
+            self.scroll_to_element_if_out_of_view(element)
 
+    def scroll_to_element_if_out_of_view(self, element):
+
+        rect = element.getBoundingClientRect()
+        if rect.top < 0 or rect.bottom > window.innerHeight:
+
+            element.scrollIntoView({"behavior": "smooth", "block": "start", "inline": "nearest"})
 
     def hints_msg_received(self, data):
         if data.type is 'show':

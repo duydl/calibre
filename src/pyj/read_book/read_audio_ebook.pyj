@@ -5,7 +5,6 @@ from __python__ import bound_methods, hash_literals
 from elementmaker import E
 
 from book_list.globals import get_session_data
-from book_list.theme import get_color
 from dom import clear, svgicon, unique_id
 from gettext import gettext as _
 from read_book.globals import runtime, ui_operations, current_spine_item, set_current_spine_item, current_book
@@ -14,16 +13,15 @@ from read_book.selection_bar import BUTTON_MARGIN, get_margins, map_to_iframe_co
 from read_book.shortcuts import shortcut_for_key_event
 
 HIDDEN = 0
-WAITING_FOR_PLAY_TO_START = 1
-PAUSED = 2
-PLAYING = 3
-STOPPED = 4
+PAUSED = 1
+PLAYING = 2
+
 
 
 def is_flow_mode():
     sd = get_session_data()
-    mode = sd.get('read_mode')
-    return mode is 'flow'
+    mode = sd.get("read_mode")
+    return mode is "flow"
 
 
 class ReadAudioEbook:
@@ -34,109 +32,151 @@ class ReadAudioEbook:
         self.view = view
         self.parser = new window.DOMParser()
         self._state = HIDDEN
-        self.bar_id = unique_id('bar')
+        self.bar_id = unique_id("bar")
         
         container = self.container
-        container.setAttribute('tabindex', '0')
-        container.style.overflow = 'hidden'
-        container.style.justifyContent = 'flex-end'
-        container.style.alignItems = 'flex-end' if is_flow_mode() else 'flex-start'
+        container.setAttribute("tabindex", "0")
         container.appendChild(E.div(
             id=self.bar_id,
-            style='border: solid 1px currentColor; border-radius: 5px;'
-            'display: flex; flex-direction: column; margin: 1rem;'
+            style="position: absolute; bottom: 0; width: 80%; height: 2em; border-radius: 1em; padding:0.5em; display: flex; justify-content: center; align-items: center; background-color: rgba(51, 51, 51, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); "
         )) 
+        
+        container.addEventListener("keydown", self.on_keydown, {"passive": False})
+        container.addEventListener("click", self.container_clicked, {"passive": False})
+        container.addEventListener("contextmenu", self.toggle, {"passive": False})
+        document.addEventListener("scroll", self.on_scrolled, {"passive": False})
 
-        self.audio_id = unique_id('audio')
-        container.appendChild(E.audio(
+        bar_container = self.bar = document.getElementById(self.bar_id)
+
+        if self.state is PLAYING:
+            bar_container.classList.add("speaking")
+        else:
+            bar_container.classList.remove("speaking")
+
+        def cb(name, icon, text):
+            ans = svgicon(icon, ICON_SIZE, ICON_SIZE, text)
+            if name:
+                ans.addEventListener("click", def(ev):
+                    ev.stopPropagation(), ev.preventDefault()
+                    self[name](ev)
+                    self.view.focus_iframe()
+                )
+            ans.classList.add("simple-link")
+            ans.style.marginLeft = ans.style.marginRight = BUTTON_MARGIN
+            return ans
+
+        for x in [
+            E.div (
+                style='height: 3ex; display: flex; align-items: center; justify-content: center',
+                cb("pause", "pause", _("Pause audio")),
+                cb("play", "play", _("Play audio")),
+                cb("overlay", "cogs", _("Toggle overlay")),
+            ),
+            E.div(
+                id="timeDisplay",
+                E.text("")
+            ),
+            E.div(
+                id="progressBar",
+                style="height:1.5em; display:block; background-color:rgba(255, 255, 255, 0.7); width:70%; margin:1em",
+                E.div(
+                style="display:block; background-color:rgba(0, 0, 0, 0.9); height:100%")
+            ),
+            E.div(
+                style='height: 3ex; display: flex; align-items: center; justify-content: center',
+                cb("slower", "slower", _("Slow down speech")),
+                cb("faster", "faster", _("Speed up speech")),
+                cb("hide", "close", _("Close Read aloud"))
+            )
+            
+        ]:
+            bar_container.appendChild(x)
+
+        self.progressBar = document.getElementById("progressBar") 
+        self.timeDisplay = document.getElementById("timeDisplay")
+
+        self.audio_id = unique_id("audio")
+        self.container.appendChild(E.audio(
             id=self.audio_id,
-            style='display: flex;',
-            src='',
-            # src='book/OEBPS/Audio/01.mp3',
+            src="",
+            # src="book/OEBPS/Audio/01.mp3",
             # src="book/OEBPS" + audioFile[1:],
-            # clbr://internal.sandbox/book/OEBPS/Audio/01.mp3
-            controls="controls"
-        )) # not work, src is from iframe 
+            # src=clbr://internal.sandbox/book/OEBPS/Audio/01.mp3
+            style="display:none"
+        )) 
 
         self.audioplayer = document.getElementById(self.audio_id) 
 
-        self.audioplayer.addEventListener('play', self.onAudioStart)
-
-        self.audioplayer.addEventListener('timeupdate', def():
+        self.audioplayer.addEventListener("play", self.onAudioStart)
+        self.audioplayer.addEventListener("timeupdate", def():
+            audioCurrentTime = self.audioplayer.currentTime
+            progress = (audioCurrentTime / self.audioplayer.duration) * 100
+            self.progressBar.firstChild.style.width = progress + "%"
+            self.timeDisplay.textContent = f"{self.secondsToMS(audioCurrentTime)}/{self.secondsToMS(self.audioplayer.duration)}"
             if self.state == PLAYING:
-                audioCurrentTime = self.audioplayer.currentTime
-                spanID = self.findSpanIDForTime(audioCurrentTime)  # Implement findSpanIDForTime using audioMap
-
+                spanID = self.findSpanIDForTime(audioCurrentTime)  
                 if spanID != self.spanID:
-                    self.onClipBegin(spanID)
+                    self.onNextClip(spanID)
         )
 
-        self.audioplayer.addEventListener('ended', self.onAudioEnd)
+        self.progressBar.addEventListener("click", def(event):
+            print(event)
+            rect = self.progressBar.getBoundingClientRect()
+            clickX = event.clientX - rect.left
+            totalWidth = rect.width
+            skipTime = (clickX / totalWidth) * self.audioplayer.duration
+            self.audioplayer.currentTime = skipTime
+        )
 
-        container.appendChild(E.style(
-            f'#{self.bar_id}.speaking '+'{ opacity: 0.5 }\n\n',
-            f'#{self.bar_id}.speaking:hover '+'{ opacity: 1.0 }\n\n',
-        ))
-        window.addEventListener('scroll', self.no_latency_onscroll)
-        container.addEventListener('keydown', self.on_keydown, {'passive': False})
-        container.addEventListener('click', self.container_clicked, {'passive': False})
-        container.addEventListener('contextmenu', self.toggle, {'passive': False})
-        
-
-    def no_latency_onscroll(self):
-        print("try scrolling")
+        self.audioplayer.addEventListener("ended", self.onAudioEnd)
 
 
     def parse_smil_file(self, smil_content, smil_name, mimetype):
-
-        xmlDoc = self.parser.parseFromString(smil_content, 'text/xml')
-        audioMap = {}
-        audioFiles = set()
-
         # Extract information from the parsed XML
-        parElements = xmlDoc.getElementsByTagName('par')
+        xmlDoc = self.parser.parseFromString(smil_content, "text/xml")
+        audioMap = {}
+        # audioFiles = set()
+
+        parElements = xmlDoc.getElementsByTagName("par")
+
+        audioElement = parElements[0].getElementsByTagName("audio")[0]
+        audioFile = audioElement.getAttribute("src")
+
         for parElement in parElements:
-            textElement = parElement.getElementsByTagName('text')[0]
-            audioElement = parElement.getElementsByTagName('audio')[0]
+            textElement = parElement.getElementsByTagName("text")[0]
+            audioElement = parElement.getElementsByTagName("audio")[0]
             if textElement and audioElement:
-                spanID = textElement.getAttribute('src').split('#')[1]
+                spanID = textElement.getAttribute("src").split("#")[1]
                 audioDetails = {
-                    'src': audioElement.getAttribute('src'),
-                    'clipBegin': audioElement.getAttribute('clipBegin'),
-                    'clipEnd': audioElement.getAttribute('clipEnd')
+                    "clipBegin": audioElement.getAttribute("clipBegin"),
+                    "clipEnd": audioElement.getAttribute("clipEnd")
                 }
                 audioMap[spanID] = audioDetails
-                audioFiles.add(audioElement.getAttribute('src'))
+                # audioFiles.add(audioElement.getAttribute("src"))
 
-        self.audioMaps[smil_name[:-5].replace("smil", "text")] = [audioMap, list(audioFiles)]
+        self.audioMaps[smil_name[:-5].replace("smil", "text")] = [audioMap, audioFile]
         
 
     def append_audio(self):
 
         if self.audioMaps[current_spine_item()]:
-            self.send_message('mark', spanID = self.spanID)
+            self.send_message("color", spanID = self.spanID)
             self.audioMap = self.audioMaps[current_spine_item()]
-            # self.audioplayer.dataset.calibreSrc = self.audioMaps[current_spine_item()][1][0][1:]
-            self.audioplayer.src = "book/epub/" + self.audioMaps[current_spine_item()][1][0][1:]
-            self.play()
+            self.audioplayer.src = "book/" + self.audioFiles[0].split("/")[0] + self.audioMaps[current_spine_item()][1][1:]
         else:
             self.audioplayer.src = ""
 
     @property
     def container(self):
-        return document.getElementById('audio-ebooks-overlay')
+        return document.getElementById("audio-ebooks-overlay")
 
     @property
     def supports_css_min_max(self):
         return not runtime.is_standalone_viewer or runtime.QT_VERSION >= 0x050f00
 
     @property
-    def bar(self):
-        return document.getElementById(self.bar_id)
-
-    @property
     def is_visible(self):
-        return self.container.style.display is not 'none'
+        return self.container.style.display is not "none"
 
     @property
     def state(self):
@@ -146,215 +186,130 @@ class ReadAudioEbook:
     def state(self, val):
         if val is not self._state:
             self._state = val
-            self.build_bar()
+
 
     def hide(self):
         if self.state is not HIDDEN:
+            self.send_message("color", old_spanID=self.spanID)
             self.audioplayer.pause()
-            # ui_operations.tts('stop')
-            self.state = HIDDEN
-            self.container.style.display = 'none'
+            self.container.style.display = "none"
             self.view.focus_iframe()
+            self.state = HIDDEN
             if ui_operations.read_aloud_state_changed:
                 ui_operations.read_aloud_state_changed(False)
 
     def show(self):
         if self.state is HIDDEN:
             self.append_audio()
-            self.container.style.display = 'flex'
-            self.state = STOPPED
+            self.container.style.display = "block"
             self.focus()
+            self.state = PAUSED
             if ui_operations.read_aloud_state_changed:
                 ui_operations.read_aloud_state_changed(True)
 
     def focus(self):
         self.container.focus()
 
-    def build_bar(self, annot_id):
-        if self.state is HIDDEN:
-            return
-        self.container.style.alignItems = 'flex-end' if is_flow_mode() else 'flex-start'
-        bar_container = self.bar
-        if self.state is PLAYING:
-            bar_container.classList.add('speaking')
-        else:
-            bar_container.classList.remove('speaking')
-        clear(bar_container)
-        bar_container.style.maxWidth = 'min(40rem, 80vw)' if self.supports_css_min_max else '40rem'
-        bar_container.style.backgroundColor = get_color("window-background")
-        for x in [
-            E.div(style='height: 4ex; display: flex; align-items: center; padding: 5px; justify-content: center'),
-
-            E.hr(style='border-top: solid 1px; margin: 0; padding: 0; display: none'),
-
-            E.div(
-                style='display: none; padding: 5px; font-size: smaller',
-                E.div()
-            )
-        ]:
-            bar_container.appendChild(x)
-        bar = bar_container.firstChild
-
-        def cb(name, icon, text):
-            ans = svgicon(icon, ICON_SIZE, ICON_SIZE, text)
-            if name:
-                ans.addEventListener('click', def(ev):
-                    ev.stopPropagation(), ev.preventDefault()
-                    self[name](ev)
-                    self.view.focus_iframe()
-                )
-            ans.classList.add('simple-link')
-            ans.style.marginLeft = ans.style.marginRight = BUTTON_MARGIN
-            return ans
-
-        if self.state is PLAYING:
-            bar.appendChild(cb('pause', 'pause', _('Pause reading')))
-        elif self.state is WAITING_FOR_PLAY_TO_START:
-            bar.appendChild(cb(None, 'hourglass', _('Pause reading')))
-        else:
-            bar.appendChild(cb('play', 'play', _('Start reading') if self.state is STOPPED else _('Resume reading')))
-        bar.appendChild(cb('slower', 'slower', _('Slow down speech')))
-        bar.appendChild(cb('faster', 'faster', _('Speed up speech')))
-        bar.appendChild(cb('configure', 'cogs', _('Configure Read aloud')))
-        bar.appendChild(cb('hide', 'close', _('Close Read aloud')))
-        if self.state is not WAITING_FOR_PLAY_TO_START:
-            notes_container = bar_container.lastChild
-            notes_container.style.display = notes_container.previousSibling.style.display = 'block'
-            notes_container = notes_container.lastChild
-            if self.state is STOPPED:
-                notes_container.textContent = _('Tap/click on a word to start from there')
-            elif self.state is PLAYING:
-                notes_container.textContent = _('Tap/click on a word to skip to it')
-            else:
-                notes_container.textContent = _('Tap/click on a word to continue from there')
-
-    def configure(self):
-        self.pause()
-        self.waiting_for_configure = True
-        # ui_operations.tts('configure')
-
     def slower(self):
-        # # ui_operations.tts('slower')
-        self.audioplayer.playbackRate += 0.2
-        print(self.audioplayer.currentTime)
+        self.audioplayer.playbackRate -= 0.1
         
-
     def faster(self):
-        # # ui_operations.tts('faster')
-        self.audioplayer.playbackRate -= 0.2
-        print(self.audioplayer.currentTime)
+        self.audioplayer.playbackRate += 0.1
 
     def play(self):
-        if self.state is PAUSED:
-            # # ui_operations.tts('resume_after_configure' if self.waiting_for_configure else 'resume')
-            self.audioplayer.play()
-            self.waiting_for_configure = False
-            self.state = PLAYING
-            
-        elif self.state is STOPPED:
-            self.audioplayer.play()
-            # self.send_message('play')
-            self.state = PLAYING
+        self.audioplayer.play()
+        self.state = PLAYING
 
     def pause(self):
-        if self.state is PLAYING:
-            # # ui_operations.tts('pause')
-            self.audioplayer.pause()
-            self.state = PAUSED
-
-    def stop(self):
-        if self.state is PLAYING or self.state is PAUSED:
-            # ui_operations.tts('stop')
-            self.state = STOPPED
+        self.audioplayer.pause()
+        self.state = PAUSED
 
     def toggle(self):
         if self.state is PLAYING:
             self.pause()
-        elif self.state is PAUSED or self.state is STOPPED:
+        elif self.state is PAUSED:
             self.play()
 
+    def overlay(self):
+        if self.overlay_off:
+            self.overlay_off = False
+            self.container.style.height = "calc(100% - 1em)"
+        else:
+            self.overlay_off = True
+            self.container.style.height = "3ex"
+            
     def container_clicked(self, ev):
         self.audioplayer.play()
         if ev.button is not 0:
             return
         ev.stopPropagation(), ev.preventDefault()
         margins = get_margins()
-        pos = {'x': ev.clientX, 'y': ev.clientY}
+        pos = {"x": ev.clientX, "y": ev.clientY}
         pos = map_to_iframe_coords(pos, margins)
-        self.send_message('play', pos=pos)
-
+        self.send_message("play", pos=pos)
 
     def on_keydown(self, ev):
         ev.stopPropagation(), ev.preventDefault()
-        if ev.key is 'Escape':
+        if ev.key is "Escape":
             self.hide()
             return
-        if ev.key is ' ' or ev.key is 'MediaPlayPause' or ev.key is 'PlayPause':
+        if ev.key is " " or ev.key is "MediaPlayPause" or ev.key is "PlayPause":
             self.toggle()
             return
-        if ev.key is 'Play' or ev.key is 'MediaPlay':
+        if ev.key is "Play" or ev.key is "MediaPlay":
             self.play()
             return
-        if ev.key is 'Pause' or ev.key is 'MediaPause':
+        if ev.key is "Pause" or ev.key is "MediaPause":
             self.pause()
-            return
-        if ev.key is 'MediaStop':
-            self.stop()
             return
         sc_name = shortcut_for_key_event(ev, self.view.keyboard_shortcut_map)
         if not sc_name:
             return
-        if sc_name is 'show_chrome':
+        if sc_name is "show_chrome":
             self.hide()
-        elif sc_name is 'quit':
+        elif sc_name is "quit":
             self.hide()
-        elif sc_name in ('up', 'down', 'pageup', 'pagedown', 'left', 'right'):
-            self.send_message('trigger-shortcut', name=sc_name)
-
+        elif sc_name in ("up", "down", "pageup", "pagedown", "left", "right"):
+            self.send_message("trigger-shortcut", name=sc_name)
 
     def onAudioStart(self):
         self.audioMap = self.audioMaps[current_spine_item()]
-        self.state = PLAYING
-        # Add your actions for when the audio starts
 
-    # Define a function to handle when audio passes clipBegin
-    def onClipBegin(self, spanID):
-
+    def onNextClip(self, spanID):
         old_spanID = self.spanID
         self.spanID = spanID
-        self.send_message('mark', old_spanID=old_spanID, spanID = self.spanID)
-        # Add your actions for when the audio passes clipBegin
+        self.send_message("color", old_spanID=old_spanID, spanID = self.spanID)
 
-    # Define a function to handle when audio reaches its end
     def onAudioEnd(self, spanID):
-        print('Audio reached its end')
-        self.state = STOPPED
         self.view.show_next_spine_item()
-        # Add your actions for when the audio reaches its end
+        self.play()
     
     def findSpanIDForTime(self, currentTime):
         if self.audioMap:
-            
             for spanID in self.audioMap[0]:
-                clipBeginTime = self.convertTimeToSeconds(self.audioMap[0][spanID]['clipBegin'])
-                clipEndTime = self.convertTimeToSeconds(self.audioMap[0][spanID]['clipEnd'])
-                
-                if clipBeginTime <= currentTime <= clipEndTime:
+                clipBeginTime = self.convertTimeToSeconds(self.audioMap[0][spanID]["clipBegin"])
+                clipEndTime = self.convertTimeToSeconds(self.audioMap[0][spanID]["clipEnd"])               
+                if clipBeginTime <= currentTime < clipEndTime:
                     return spanID
-
         return None
 
     def convertTimeToSeconds(self, timeString):
-        parts = timeString.split(':')
+        parts = timeString.split(":")
         if len(parts) != 3:
             return 0
-
         hours, minutes, seconds = map(float, parts)
         return hours * 3600 + minutes * 60 + seconds
 
+    def secondsToMS(self, seconds):
+        minutes = Math.floor(seconds / 60)
+        remainingSeconds = int(seconds % 60)
+        return str(minutes) + ':' + (str(remainingSeconds).zfill(2))
+
+
     def send_message(self, type, **kw):
-        self.view.iframe_wrapper.send_message('audioebook', type=type, **kw)
+        self.view.iframe_wrapper.send_message("audioebook", type=type, **kw)
 
     def handle_message(self, msg):
-        if msg.type is 'text-extracted':
-            self.audioplayer.currentTime = self.convertTimeToSeconds(self.audioMap[0][msg.spanID]['clipBegin'])
+        if msg.type is "container-clicked":
+            if msg.spanID:
+                self.audioplayer.currentTime = self.convertTimeToSeconds(self.audioMap[0][msg.spanID]["clipBegin"])
