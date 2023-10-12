@@ -248,7 +248,7 @@ class ReadAloud:
         self.view.iframe_wrapper.send_message('tts', type=type, **kw)
 
     def handle_message(self, msg):
-        if msg.type is 'text-extracted':
+        if msg.type is 'container-clicked':
             if msg.pos:
                 self.stop()
             ui_operations.tts('play', {'marked_text': msg.marked_text})

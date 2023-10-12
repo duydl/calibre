@@ -8,7 +8,7 @@ from book_list.globals import get_session_data
 from book_list.theme import get_color
 from dom import clear, svgicon, unique_id
 from gettext import gettext as _
-from read_book.globals import runtime, ui_operations
+from read_book.globals import runtime, ui_operations, current_spine_item, set_current_spine_item, current_book
 from read_book.highlights import ICON_SIZE
 from read_book.selection_bar import BUTTON_MARGIN, get_margins, map_to_iframe_coords
 from read_book.shortcuts import shortcut_for_key_event
@@ -57,28 +57,39 @@ class ReadAudioEbook:
             # clbr://internal.sandbox/book/OEBPS/Audio/01.mp3
             controls="controls"
         )) # not work, src is from iframe 
+
         self.audioplayer = document.getElementById(self.audio_id) 
 
-        self.audioMaps = {}
-        self.smilFiles = self.view.smil_files
+        self.audioplayer.addEventListener('play', self.onAudioStart)
 
-        for smilFile in self.smilFiles:
-            ui_operations.get_file(
-                self.view.book, smilFile, self.parse_smil_file)
+        self.audioplayer.addEventListener('timeupdate', def():
+            if self.state == PLAYING:
+                audioCurrentTime = self.audioplayer.currentTime
+                spanID = self.findSpanIDForTime(audioCurrentTime)  # Implement findSpanIDForTime using audioMap
+
+                if spanID != self.spanID:
+                    self.onClipBegin(spanID)
+        )
+
+        self.audioplayer.addEventListener('ended', self.onAudioEnd)
 
         container.appendChild(E.style(
             f'#{self.bar_id}.speaking '+'{ opacity: 0.5 }\n\n',
             f'#{self.bar_id}.speaking:hover '+'{ opacity: 1.0 }\n\n',
         ))
+        window.addEventListener('scroll', self.no_latency_onscroll)
         container.addEventListener('keydown', self.on_keydown, {'passive': False})
         container.addEventListener('click', self.container_clicked, {'passive': False})
         container.addEventListener('contextmenu', self.toggle, {'passive': False})
         
 
-    def parse_smil_file(self, smil_content, smil_name, mimetype):
-        # Parse the XML string
-        xmlDoc = self.parser.parseFromString(smil_content, 'text/xml')
+    def no_latency_onscroll(self):
+        print("try scrolling")
 
+
+    def parse_smil_file(self, smil_content, smil_name, mimetype):
+
+        xmlDoc = self.parser.parseFromString(smil_content, 'text/xml')
         audioMap = {}
         audioFiles = set()
 
@@ -93,25 +104,23 @@ class ReadAudioEbook:
                     'src': audioElement.getAttribute('src'),
                     'clipBegin': audioElement.getAttribute('clipBegin'),
                     'clipEnd': audioElement.getAttribute('clipEnd')
-                    # Add more audio details as needed
                 }
                 audioMap[spanID] = audioDetails
                 audioFiles.add(audioElement.getAttribute('src'))
 
-        self.audioMaps[smil_name[:-5]] = [audioMap, list(audioFiles)]
-        self.append_audio()
+        self.audioMaps[smil_name[:-5].replace("smil", "text")] = [audioMap, list(audioFiles)]
+        
 
     def append_audio(self):
 
-        if self.audioMaps[self.text_name]:
-            self.audioplayer.src = self.get_audio_src(self.text_name)
+        if self.audioMaps[current_spine_item()]:
+            self.send_message('mark', spanID = self.spanID)
+            self.audioMap = self.audioMaps[current_spine_item()]
+            # self.audioplayer.dataset.calibreSrc = self.audioMaps[current_spine_item()][1][0][1:]
+            self.audioplayer.src = "book/epub/" + self.audioMaps[current_spine_item()][1][0][1:]
+            self.play()
         else:
             self.audioplayer.src = ""
-
-    def get_audio_src(self, audio_name):
-
-        return "book/OEBPS" + self.audioMaps[audio_name][1][0][1:]
-
 
     @property
     def container(self):
@@ -151,6 +160,7 @@ class ReadAudioEbook:
 
     def show(self):
         if self.state is HIDDEN:
+            self.append_audio()
             self.container.style.display = 'flex'
             self.state = STOPPED
             self.focus()
@@ -240,10 +250,11 @@ class ReadAudioEbook:
             self.audioplayer.play()
             self.waiting_for_configure = False
             self.state = PLAYING
+            
         elif self.state is STOPPED:
             self.audioplayer.play()
             # self.send_message('play')
-            self.state = WAITING_FOR_PLAY_TO_START
+            self.state = PLAYING
 
     def pause(self):
         if self.state is PLAYING:
@@ -272,6 +283,7 @@ class ReadAudioEbook:
         pos = map_to_iframe_coords(pos, margins)
         self.send_message('play', pos=pos)
 
+
     def on_keydown(self, ev):
         ev.stopPropagation(), ev.preventDefault()
         if ev.key is 'Escape':
@@ -296,30 +308,53 @@ class ReadAudioEbook:
             self.hide()
         elif sc_name is 'quit':
             self.hide()
-            ui_operations.quit()
         elif sc_name in ('up', 'down', 'pageup', 'pagedown', 'left', 'right'):
             self.send_message('trigger-shortcut', name=sc_name)
 
-    def handle_audioebook_event(self, which, data):
-        if which is 'mark':
-            self.send_message('mark', num=data)
-        elif which is 'begin':
-            self.state = PLAYING
-        elif which is 'end':
-            self.state = STOPPED
-            self.view.show_next_spine_item()
-        elif which is 'configured':
-            self.focus()
-            if self.waiting_for_configure:
-                self.play()
-            if data is not None:
-                pass
+
+    def onAudioStart(self):
+        self.audioMap = self.audioMaps[current_spine_item()]
+        self.state = PLAYING
+        # Add your actions for when the audio starts
+
+    # Define a function to handle when audio passes clipBegin
+    def onClipBegin(self, spanID):
+
+        old_spanID = self.spanID
+        self.spanID = spanID
+        self.send_message('mark', old_spanID=old_spanID, spanID = self.spanID)
+        # Add your actions for when the audio passes clipBegin
+
+    # Define a function to handle when audio reaches its end
+    def onAudioEnd(self, spanID):
+        print('Audio reached its end')
+        self.state = STOPPED
+        self.view.show_next_spine_item()
+        # Add your actions for when the audio reaches its end
+    
+    def findSpanIDForTime(self, currentTime):
+        if self.audioMap:
+            
+            for spanID in self.audioMap[0]:
+                clipBeginTime = self.convertTimeToSeconds(self.audioMap[0][spanID]['clipBegin'])
+                clipEndTime = self.convertTimeToSeconds(self.audioMap[0][spanID]['clipEnd'])
+                
+                if clipBeginTime <= currentTime <= clipEndTime:
+                    return spanID
+
+        return None
+
+    def convertTimeToSeconds(self, timeString):
+        parts = timeString.split(':')
+        if len(parts) != 3:
+            return 0
+
+        hours, minutes, seconds = map(float, parts)
+        return hours * 3600 + minutes * 60 + seconds
 
     def send_message(self, type, **kw):
         self.view.iframe_wrapper.send_message('audioebook', type=type, **kw)
 
     def handle_message(self, msg):
         if msg.type is 'text-extracted':
-            if msg.pos:
-                self.stop()
-            # ui_operations.tts('play', {'marked_text': msg.marked_text})
+            self.audioplayer.currentTime = self.convertTimeToSeconds(self.audioMap[0][msg.spanID]['clipBegin'])

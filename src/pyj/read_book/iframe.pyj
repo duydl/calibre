@@ -66,7 +66,7 @@ from read_book.touch import (
 from read_book.viewport import scroll_viewport
 from select import (
     first_visible_word, is_start_closer_to_point, move_end_of_selection,
-    selection_extents, word_at_point
+    selection_extents, word_at_point, span_at_point
 )
 from utils import debounce, is_ios
 
@@ -999,30 +999,39 @@ class IframeBoss:
         elif data.type is 'trigger-shortcut':
             self.on_handle_navigation_shortcut(data)
 
-
-    def audioebook_msg_received(self, data):
-        if data.type is 'mark':
-            self.mark_word_being_spoken(data.num)
-        elif data.type is 'play':
-            text_node, offset = None, 0
-            if data.pos:
-                r = word_at_point(data.pos.x, data.pos.y)
-            else:
-                r = first_visible_word()
-            if r and r.startContainer?.nodeType is Node.TEXT_NODE:
-                text_node, offset = r.startContainer, r.startOffset
-            marked_text = tts_data(text_node, offset)
-            sel = window.getSelection()
-            sel.removeAllRanges()
-            self.send_message('tts', type='text-extracted', marked_text=marked_text, pos=data.pos)
-        elif data.type is 'trigger-shortcut':
-            self.on_handle_navigation_shortcut(data)
-
-
     def mark_word_being_spoken(self, occurrence_number):
         self.last_search_at = window.performance.now()
         if select_tts_mark(occurrence_number):
             self.ensure_selection_boundary_visible()
+
+
+    def audioebook_msg_received(self, data):
+        print("def audioebook_msg_received(self, data)", data)
+        if data.type is 'mark':
+            self.mark_span_id(data.old_spanID, data.spanID)
+        elif data.type is 'play':
+
+            if data.pos:
+                r = span_at_point(data.pos.x, data.pos.y)
+            
+            self.send_message('audioebook', type='container-clicked', spanID=r)
+        elif data.type is 'trigger-shortcut':
+            self.on_handle_navigation_shortcut(data)
+
+    def mark_span_id(self, old_spanId, spanId):
+        element = document.getElementById(spanId)
+        old_element = document.getElementById(old_spanId)
+
+        if old_element and element:
+            print("here")
+            old_element.style.backgroundColor = element.style.backgroundColor
+            element.style.backgroundColor = "black" 
+            element.focus()
+
+        elif element:
+            element.style.backgroundColor = "black" 
+            element.focus()
+
 
     def hints_msg_received(self, data):
         if data.type is 'show':

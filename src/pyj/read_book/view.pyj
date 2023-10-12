@@ -1003,15 +1003,23 @@ class View:
                 sd.set('controls_help_shown_count' + ('_rtl_page_progression' if rtl_page_progression() else ''), c + 1)
 
         smil_files = []
+        audio_files = []
         for filename in book.manifest.files:
             if filename.endswith(".smil"):
                 smil_files.append(filename)
+            elif book.manifest.files[filename].mimetype == "audio/mpeg":
+                audio_files.append(filename)
         if len(smil_files) != 0:
             self.is_audio_ebook = True
-            self.smil_files = smil_files
             self.read_audio_ebook = ReadAudioEbook(self)
+            self.read_audio_ebook.smilFiles = smil_files
+            self.read_audio_ebook.audioFiles = audio_files
+            self.read_audio_ebook.audioMaps = {}
+            for smilFile in smil_files:
+                ui_operations.get_file(
+                    self.book, smilFile, self.read_audio_ebook.parse_smil_file)
             # Test concurrent later!!
-            self.read_audio_ebook.text_name = name
+            # self.read_audio_ebook.text_name = name # use current_spine # check when current_spine update later
         # else:
         #     self.read_aloud = ReadAloud(self)
 
@@ -1088,7 +1096,6 @@ class View:
         self.load_doc(name, self.show_spine_item)
 
         if self.is_audio_ebook:
-            self.read_audio_ebook.text_name = name
             self.read_audio_ebook.append_audio()
 
     def load_doc(self, name, done_callback):

@@ -42,6 +42,34 @@ def word_at_point(x, y):
             return r
 
 
+
+def span_at_point(x, y):
+    p = caret_position_from_point(x, y)
+    
+    if p:
+        # Get the container element and offset within the container
+        container = p.offsetNode
+        offset = p.offset
+
+        # Check if the container is a text node and contains a span
+        if container.nodeType == 3:  # Text node
+            # Find the parent <span> element
+            spanElement = container.parentNode
+
+            # Check if the parent is a <span> element
+            if spanElement.tagName == 'SPAN':
+                # Do something with the <span> element
+                return spanElement.id
+
+    # # print("p", p.offsetNode?.nodeType)
+    # if p and p.offsetNode?.nodeType is Node.TEXT_NODE:
+    #     word_info = expand_offset_to_word(p.offsetNode.data, p.offset)
+    #     if word_info.word:
+    #         r = document.createRange()
+    #         r.setStart(p.offsetNode, word_info.start)
+    #         r.setEnd(p.offsetNode, word_info.end)
+    #         return r
+
 def first_visible_word():
     width = window.innerWidth
     height = window.innerHeight
