@@ -107,7 +107,11 @@ class ReadAudioEbook:
 
         self.audioplayer = document.getElementById(self.audio_id) 
 
-        self.audioplayer.addEventListener("play", self.onAudioStart)
+        self.audioplayer.addEventListener("play", def():
+            self.audioMap = self.audioMaps[current_spine_item()]
+            self.send_message("mark", spanID = self.spanID)
+        )
+
         self.audioplayer.addEventListener("timeupdate", def():
             audioCurrentTime = self.audioplayer.currentTime
             progress = (audioCurrentTime / self.audioplayer.duration) * 100
@@ -116,11 +120,12 @@ class ReadAudioEbook:
             if self.state == PLAYING:
                 spanID = self.findSpanIDForTime(audioCurrentTime)  
                 if spanID != self.spanID:
-                    self.onNextClip(spanID)
+                    old_spanID = self.spanID
+                    self.spanID = spanID
+                    self.send_message("mark", old_spanID=old_spanID, spanID = self.spanID)
         )
 
         self.progressBar.addEventListener("click", def(event):
-            print(event)
             rect = self.progressBar.getBoundingClientRect()
             clickX = event.clientX - rect.left
             totalWidth = rect.width
@@ -128,7 +133,9 @@ class ReadAudioEbook:
             self.audioplayer.currentTime = skipTime
         )
 
-        self.audioplayer.addEventListener("ended", self.onAudioEnd)
+        self.audioplayer.addEventListener("ended", def():
+            view.show_next_spine_item()
+        )    
 
 
     def parse_smil_file(self, smil_content, smil_name, mimetype):
@@ -157,14 +164,18 @@ class ReadAudioEbook:
         self.audioMaps[smil_name[:-5].replace("smil", "text")] = [audioMap, audioFile]
         
 
-    def append_audio(self):
+    def change_audio_src(self):
 
         if self.audioMaps[current_spine_item()]:
-            self.send_message("color", spanID = self.spanID)
+            self.send_message("mark", spanID = self.spanID)
             self.audioMap = self.audioMaps[current_spine_item()]
             self.audioplayer.src = "book/" + self.audioFiles[0].split("/")[0] + self.audioMaps[current_spine_item()][1][1:]
+            self.play()
+            self.send_message("play")
         else:
             self.audioplayer.src = ""
+            self.view.show_next_spine_item()
+            
 
     @property
     def container(self):
@@ -190,8 +201,8 @@ class ReadAudioEbook:
 
     def hide(self):
         if self.state is not HIDDEN:
-            self.send_message("color", old_spanID=self.spanID)
-            self.audioplayer.pause()
+            self.send_message("mark", old_spanID=self.spanID)
+            self.pause()
             self.container.style.display = "none"
             self.view.focus_iframe()
             self.state = HIDDEN
@@ -200,7 +211,7 @@ class ReadAudioEbook:
 
     def show(self):
         if self.state is HIDDEN:
-            self.append_audio()
+            self.change_audio_src()
             self.container.style.display = "block"
             self.focus()
             self.state = PAUSED
@@ -239,7 +250,7 @@ class ReadAudioEbook:
             self.container.style.height = "3ex"
             
     def container_clicked(self, ev):
-        self.audioplayer.play()
+        self.play()
         if ev.button is not 0:
             return
         ev.stopPropagation(), ev.preventDefault()
@@ -271,18 +282,6 @@ class ReadAudioEbook:
             self.hide()
         elif sc_name in ("up", "down", "pageup", "pagedown", "left", "right"):
             self.send_message("trigger-shortcut", name=sc_name)
-
-    def onAudioStart(self):
-        self.audioMap = self.audioMaps[current_spine_item()]
-
-    def onNextClip(self, spanID):
-        old_spanID = self.spanID
-        self.spanID = spanID
-        self.send_message("color", old_spanID=old_spanID, spanID = self.spanID)
-
-    def onAudioEnd(self, spanID):
-        self.view.show_next_spine_item()
-        self.play()
     
     def findSpanIDForTime(self, currentTime):
         if self.audioMap:

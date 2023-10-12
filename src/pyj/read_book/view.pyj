@@ -1095,15 +1095,14 @@ class View:
         print("view.pyj show_name", name)
         self.load_doc(name, self.show_spine_item)
 
-        if self.is_audio_ebook:
-            self.read_audio_ebook.append_audio()
-
     def load_doc(self, name, done_callback):
         def cb(resource_data):
             print("def cb(resource_data):")
             self.loaded_resources = resource_data
             done_callback(resource_data)
         load_resources(self.book, name, self.loaded_resources, cb)
+        if self.is_audio_ebook:
+            window.setTimeout(self.read_audio_ebook.change_audio_src, 1000)
 
     def goto_doc_boundary(self, start):
         name = self.book.manifest.spine[0 if start else self.book.manifest.spine.length - 1]
