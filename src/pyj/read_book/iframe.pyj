@@ -64,7 +64,6 @@ from read_book.touch import (
     create_handlers as create_touch_handlers, reset_handlers as reset_touch_handlers
 )
 from read_book.viewport import scroll_viewport
-from book_list.theme import get_color
 from select import (
     first_visible_word, is_start_closer_to_point, move_end_of_selection,
     selection_extents, word_at_point, span_at_point, first_visible_span
@@ -164,7 +163,7 @@ class IframeBoss:
             'handle_navigation_shortcut': self.on_handle_navigation_shortcut,
             'annotations': self.annotations_msg_received,
             'tts': self.tts_msg_received,
-            'audioebook': self.audioebook_msg_received,
+            'audio_ebook': self.audio_ebook_msg_received,
             'hints': self.hints_msg_received,
             'copy_selection': self.copy_selection,
             'replace_highlights': self.replace_highlights,
@@ -250,7 +249,6 @@ class IframeBoss:
             (console.error or console.log)('There was an error in the JavaScript from within the book')
 
     def display(self, data):
-        print("iframe.pyj def display")
         cancel_drag_scroll()
         drag_mouse_position.x = drag_mouse_position.y = None
         self.length_before = None
@@ -309,7 +307,6 @@ class IframeBoss:
             window.URL.revokeObjectURL(self.blob_url_map[name])
         document.body.style.removeProperty('font-family')
         root_data, self.mathjax, self.blob_url_map = finalize_resources(self.book, data.name, data.resource_data)
-        print("iframe.pyj, root_data, self.mathjax, self.blob_url_map, where it finally render the html" )
         self.highlights_to_apply = data.highlights
         unserialize_html(root_data, self.content_loaded, None, data.name)
 
@@ -562,7 +559,6 @@ class IframeBoss:
             self.update_toc_position()
 
     def no_latency_onscroll(self):
-        print("scrollscroll")
         pf = self.calculate_progress_frac()
         fpf = progress_frac()
         self.send_message(
@@ -1007,13 +1003,13 @@ class IframeBoss:
             self.ensure_selection_boundary_visible()
 
 
-    def audioebook_msg_received(self, data):
+    def audio_ebook_msg_received(self, data):
         if data.type is 'mark':
             self.color_spanID(data.old_spanID, data.spanID)
         elif data.type is 'play':
             if data.pos:
                 spanID = span_at_point(data.pos.x, data.pos.y)
-                self.send_message('audioebook', type='container-clicked', spanID=spanID)
+                self.send_message('audio_ebook', type='container-clicked', spanID=spanID)
             else:
                 spanID = first_visible_span()
 

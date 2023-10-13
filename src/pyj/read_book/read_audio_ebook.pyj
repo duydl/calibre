@@ -1,11 +1,27 @@
 # vim:fileencoding=utf-8
-# License: GPL v3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
+# License: GPL v3 Copyright: 2023, DO LE DUY <duy.dole.00ece at gmail.com>
+
+'''
+The key difference between an ePub with SMIL audio synchronization (EPUB3 with Media Overlays) and a regular ePub is the inclusion of SMIL files and audio content:
+
+SMIL Files: ePub with SMIL includes SMIL (Synchronized Multimedia Integration Language) files, XML documents that define audio and text synchronization.
+
+Audio Content: It contains audio files that match eBook sections, referenced in SMIL files for synchronized playback.
+
+Text Content: The textual content, often in HTML or XHTML files, remains similar to regular ePub. Text and audio are linked using <span> tags with unique IDs.
+
+SMIL, audio, and text files are organized into folders, usually inside the epub/ or OEBPS/ folder. Sometimes, SMIL files may be placed in text folders. In this program we assume that each spoken text file corresponds to one audio file and one SMIL file.  
+
+Public domain audio eBooks can be found on https://www.readbeyond.it/ebooks.html. ReadBeyond also offers Aeneas (https://github.com/readbeyond/aeneas), an open-source tool for force-alignment of audio and text to generate smil files. Another notable tool is https://github.com/r4victor/syncabook, builds upon Aeneas to complete a workflow for creating EPUB3 with Media Overlays.
+
+'''
+
 from __python__ import bound_methods, hash_literals
 
 from elementmaker import E
 
 from book_list.globals import get_session_data
-from dom import clear, svgicon, unique_id
+from dom import svgicon, unique_id
 from gettext import gettext as _
 from read_book.globals import runtime, ui_operations, current_spine_item, current_book
 from read_book.highlights import ICON_SIZE
@@ -15,13 +31,6 @@ from read_book.shortcuts import shortcut_for_key_event
 HIDDEN = 0
 PAUSED = 1
 PLAYING = 2
-
-
-
-def is_flow_mode():
-    sd = get_session_data()
-    mode = sd.get("read_mode")
-    return mode is "flow"
 
 
 class ReadAudioEbook:
@@ -171,17 +180,22 @@ class ReadAudioEbook:
             self.audioMap = self.audioMaps[current_spine_item()]
 
             link = self.audioFiles[0].split("/")[0] + self.audioMaps[current_spine_item()][1][2:]
-            # print("current_book().manifest", current_book().manifest)
-            ui_operations.get_file(
-                current_book(), link, def(blob, name, mimetype):
-                    # blob = new window.Blob([blob], {"type": "audio/mpeg"})
-                    blobURL = window.URL.createObjectURL(blob)
-                    self.audioplayer.src = blobURL
-                    self.play()
-                    self.send_message("play")
-            )
 
-            # self.audioplayer.src = "book/" + self.audioFiles[0].split("/")[0] + self.audioMaps[current_spine_item()][1][1:]
+            # print(link)
+            # ui_operations.get_file(
+            #     current_book(), link, def(blob, name, mimetype):
+            #         blob = new window.Blob([blob], {"type": "audio/mpeg"})
+            #         blobURL = window.URL.createObjectURL(blob)
+            #         self.audioplayer.src = blobURL
+            #         self.play()
+            #         self.send_message("play")
+            # )
+            # TODO More logics to handle unexpected folder structures
+            # TODO Prove src for Calibre content server viewer
+
+            self.audioplayer.src = "book/" + link
+            self.play()
+            self.send_message("play")
 
         else:
             self.audioplayer.src = ""
@@ -317,7 +331,7 @@ class ReadAudioEbook:
 
 
     def send_message(self, type, **kw):
-        self.view.iframe_wrapper.send_message("audioebook", type=type, **kw)
+        self.view.iframe_wrapper.send_message("audio_ebook", type=type, **kw)
 
     def handle_message(self, msg):
         if msg.type is "container-clicked":

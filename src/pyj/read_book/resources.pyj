@@ -25,12 +25,10 @@ def load_resources(book, root_name, previous_resources, proceed):
     ans = Object.create(None)
     pending_resources = v'[root_name]'
     link_pat = create_link_pat(book)
-    print("resources.pyj", root_name)
+
     def do_one():
         name = pending_resources.shift()
-        print("def load_resources do_one()", name, root_name)
         if not name:
-            # print(previous_resources)
             for k in previous_resources:
                 v'delete previous_resources[k]'
             if book.manifest.files[root_name].has_maths:
@@ -43,7 +41,6 @@ def load_resources(book, root_name, previous_resources, proceed):
             if jstype(data[0]) is 'string':
                 find_virtualized_resources(data[0])
             return setTimeout(do_one, 0)
-        print("resources.pyj  ui_operations.get_file")
         ui_operations.get_file(book, name, got_one)
 
     def got_one(data, name, mimetype):
@@ -53,7 +50,6 @@ def load_resources(book, root_name, previous_resources, proceed):
         return setTimeout(do_one, 0)
 
     def find_virtualized_resources(text):
-        print("find_virtualized_resources(text)", text)
         seen = set()
         already_pending = {x.name for x in pending_resources}
         link_pat.lastIndex = 0
@@ -97,7 +93,7 @@ def finalize_resources(book, root_name, resource_data):
             blob_url_map[name] = window.URL.createObjectURL(data)
     for name in blob_url_map:
         v'delete resource_data[name]'
-    print("def finalize_resources rootname", root_name)
+
     def add_virtualized_resource(name, text, mimetype):
         nonlocal root_data
         if name is root_name:
