@@ -167,6 +167,16 @@ def create_selection_panel(container, apply_func, cancel_func):
         inp.style.marginTop = '1ex'
         return E.div(style='margin-top:1ex', E.label(text, E.br(), ans))
 
+    def hlcopy(name, text, title):
+        ans = E.textarea(name=name, style='width: 100%; margin-top: 1ex; box-sizing: border-box; flex-grow: 10')
+        print(ans)
+        ans.value = sd.get(name) or ''
+        return E.div(style='margin-top:1ex', E.label(text, E.br(), ans))
+
+    container.appendChild(hlcopy(
+        'hl_copy_template', _('Template for copying highlight info'),
+    _('Supported variable: ')))
+
     container.appendChild(cb(
         'show_selection_bar', _('Show a popup bar with common actions next to selected text')))
     container.appendChild(url(
@@ -201,6 +211,15 @@ def commit_selection(onchange):
     container = get_container()
     changed = False
     save_ev = new Event('save_history')
+
+    ta = container.querySelector('[name=hl_copy_template]')
+    val = ta.value or ''
+    old = sd.get('hl_copy_template')
+    changed = False
+    if old is not val:
+        sd.set('hl_copy_template', val)
+        changed = True
+
     for x in container.querySelectorAll('[data-calibre-history-input]'):
         x.dispatchEvent(save_ev)
     for control in container.querySelectorAll('input[name]'):
